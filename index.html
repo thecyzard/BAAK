@@ -1614,7 +1614,80 @@ function handleSaveReport(e) {
 
 async function handlePromoImageUpload(input){const file=input.files&&input.files[0];if(!file)return;try{const url=await baakUploadFile(file,'campaigns');document.getElementById('promoImageUrl').value=url;const prev=document.getElementById('promoImagePreview');prev.src=url;prev.style.display='block';showToast('Campaign image uploaded to cloud storage.');}catch(error){showToast('Upload failed: '+error.message);console.error(error);}}
 
-async function handleSendBroadcast(e){e.preventDefault();if(!baakRequireConfig()||!baakIsAdmin()){showToast('Admin sign-in required.');return;}const subject=document.getElementById('promoSubject').value;const payload={subject,message:document.getElementById('promoMessage').value,button_text:document.getElementById('promoBtnText').value||'Learn More',button_url:document.getElementById('promoBtnUrl').value,image_url:document.getElementById('promoImageUrl').value};const {data:queued,error}=await baakSupabase.from('baak_broadcasts').insert({payload,status:'queued',created_by:baakSession.user.id}).select('id').single();if(error){showToast('Broadcast queue failed: '+error.message);return;}const {data:sent,error:sendError}=await baakSupabase.functions.invoke('baak-send-broadcast',{body:{broadcast_id:queued.id}});if(sendError){showToast('Broadcast queued; delivery function needs deployment: '+sendError.message);}else{showToast('Broadcast processed: '+(sent.sent||0)+' emails sent.');}e.target.reset();document.getElementById('promoImagePreview').style.display='none';}
+async function handleSendBroadcast(e){
+  e.preventDefault();
+  if(!baakRequireConfig()||!baakIsAdmin()){
+    showToast('Admin sign-in required.');
+    return;
+  }
+
+  const form=e.target;
+  const submitButton=form.querySelector('button[type="submit"]');
+  if(form.dataset.submitting==='1')return;
+
+  const subject=document.getElementById('promoSubject').value.trim();
+  const message=document.getElementById('promoMessage').value.trim();
+  const payload={
+    subject,
+    message,
+    button_text:document.getElementById('promoBtnText').value.trim()||'Learn More',
+    button_url:document.getElementById('promoBtnLink').value.trim(),
+    image_url:document.getElementById('promoImageUrl').value.trim()
+  };
+
+  if(!subject||!message){
+    showToast('Please enter the broadcast subject and message.');
+    return;
+  }
+
+  form.dataset.submitting='1';
+  if(submitButton){
+    submitButton.disabled=true;
+    submitButton.dataset.originalText=submitButton.textContent;
+    submitButton.textContent='Sending…';
+  }
+
+  try{
+    const {data:queued,error}=await baakSupabase
+      .from('baak_broadcasts')
+      .insert({payload,status:'queued',created_by:baakSession.user.id})
+      .select('id')
+      .single();
+
+    if(error)throw new Error('Broadcast queue failed: '+error.message);
+
+    const {data:sent,error:sendError}=await baakSupabase.functions.invoke(
+      'baak-send-broadcast',
+      {body:{broadcast_id:queued.id}}
+    );
+
+    if(sendError){
+      showToast('Broadcast queued, but delivery needs attention: '+sendError.message);
+      console.error('[BAAK] Broadcast delivery failed; queued item retained:',sendError);
+      return;
+    }
+
+    if(sent&&sent.ok===false){
+      showToast('Broadcast queued, but delivery failed: '+(sent.error||'Unknown error'));
+      console.error('[BAAK] Broadcast function reported failure:',sent);
+      return;
+    }
+
+    showToast('Broadcast processed: '+(sent?.sent||0)+' emails sent.');
+    form.reset();
+    const preview=document.getElementById('promoImagePreview');
+    if(preview)preview.style.display='none';
+  }catch(error){
+    showToast(error.message||'Broadcast could not be queued.');
+    console.error('[BAAK] Broadcast failed:',error);
+  }finally{
+    form.dataset.submitting='0';
+    if(submitButton){
+      submitButton.disabled=false;
+      submitButton.textContent=submitButton.dataset.originalText||'Send Broadcast to All Subscribers';
+    }
+  }
+}
 
 function renderAdminJobsList() {
   const db = getDB();
