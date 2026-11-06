@@ -1048,15 +1048,15 @@ function renderCompanyPage(c) {
         <div class="contact-card">
           <h3>Send Direct Enquiry</h3>
           <form class="contact-form" onsubmit="handleFormSubmit(event, '${c.name}')">
-            <div class="field"><label>Your Full Name</label><input type="text" required placeholder="Full Name"></div>
-            <div class="field"><label>Email / Phone Number</label><input type="text" required placeholder="Contact Info"></div>
+            <div class="field"><label>Your Full Name</label><input type="text" name="name" required maxlength="120" autocomplete="name" placeholder="Full Name"></div>
+            <div class="field"><label>Email / Phone Number</label><input type="text" name="contact_info" required maxlength="254" autocomplete="email" placeholder="Email address or phone number"></div>
             <div class="field">
               <label>Service / Product Required</label>
-              <select id="enquiryServiceSelect">
+              <select id="enquiryServiceSelect" name="service">
                 ${c.services.map(s => `<option value="${s[0]}">${s[0]}</option>`).join('')}
               </select>
             </div>
-            <div class="field"><label>Message / Specifications</label><textarea required placeholder="Provide details of your request..."></textarea></div>
+            <div class="field"><label>Message / Specifications</label><textarea name="message" required maxlength="5000" placeholder="Provide details of your request..."></textarea></div>
             <button class="btn gold" type="submit">Submit Enquiry </button>
           </form>
         </div>
@@ -1891,10 +1891,17 @@ async function handleFormSubmit(e,target){
   form.dataset.submitting='1';if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Submitting…';}
   const fields={};new FormData(form).forEach((v,k)=>{if(typeof v==='string')fields[k]=v.trim();});
   try{
+    // Subsidiary enquiry forms accept either an email address or a phone number.
+    const contactInfo=String(fields.contact_info||'').trim();
+    const looksLikeEmail=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactInfo);
+    const email=fields.email|| (looksLikeEmail?contactInfo:'');
+    const phone=fields.phone||(!looksLikeEmail?contactInfo:'');
+    const selectedService=fields.service||'';
+    const message=[selectedService?'Service / Product: '+selectedService:'',fields.message||''].filter(Boolean).join('\n\n');
     const saved=await baakInsertSubmission('contact_enquiry',{
-      target, name:fields.name||'', email:fields.email||'', phone:fields.phone||'',
-      target_company:fields.target_company||target, subject:fields.subject||'',
-      message:fields.message||'', submitted_at:new Date().toISOString(), fields
+      target, name:fields.name||'', email, phone,
+      target_company:fields.target_company||target, subject:fields.subject||selectedService,
+      message, contact_info:contactInfo, submitted_at:new Date().toISOString(), fields
     });
     const mail=await baakQueueEmailWorkflow('contact_enquiry',saved.id);
     showToast(mail.ok?'Enquiry received. A confirmation email has been sent.':'Enquiry safely received. Email notification is pending; please try again later.');
