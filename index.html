@@ -566,42 +566,108 @@ let baakSupabase = null;
 let baakSession = null;
 let baakCloudReady = false;
 let baakRealtimeChannel = null;
+let baakAdminRealtimeChannel = null;
 let baakSaveQueue = Promise.resolve();
+let baakLastRemoteUpdatedAt = null;
 const BAAK_DB_ROW_ID = 'primary';
 const BAAK_DB_CACHE_KEY = 'baak_master_db_v26';
 function baakConfigured(){return !!(window.BAAK_SUPABASE_URL && window.BAAK_SUPABASE_ANON_KEY && /^https:\/\//.test(window.BAAK_SUPABASE_URL) && !window.BAAK_SUPABASE_URL.includes('PASTE_') && !window.BAAK_SUPABASE_ANON_KEY.includes('PASTE_'));}
 function baakIsAdmin(){return !!(baakSession && baakSession.user && baakSession.user.app_metadata && baakSession.user.app_metadata.role==='admin');}
 function baakRequireConfig(){if(!baakConfigured()||!baakSupabase){showToast('Supabase credentials are not configured yet.');return false;}return true;}
+async function baakRefreshSubscriberCount(){
+  const node=document.getElementById('adminSubscriberCount');
+  if(!node||!baakIsAdmin()||!baakSupabase)return;
+  const {count,error}=await baakSupabase.from('baak_subscribers').select('id',{count:'exact',head:true});
+  const current=document.getElementById('adminSubscriberCount');
+  if(current)current.textContent=error?'—':String(count||0);
+}
+function baakStartAdminRealtime(){
+  if(!baakIsAdmin()||!baakSupabase||baakAdminRealtimeChannel)return;
+  baakAdminRealtimeChannel=baakSupabase.channel('baak-admin-activity-live')
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'baak_submissions'},payload=>{
+      if(!baakIsAdmin()||!payload.new)return;
+      const inbox=document.getElementById('tab-submissions');
+      if(inbox&&inbox.classList.contains('active'))loadAdminSubmissions();
+      showToast(payload.new.kind==='job_application'?'New job application received.':'New customer enquiry received.');
+    })
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'baak_subscribers'},()=>{
+      baakRefreshSubscriberCount();
+      showToast('A new newsletter subscription was received.');
+    })
+    .subscribe(status=>{
+      if(status==='SUBSCRIBED')console.info('[BAAK] Admin activity sync connected.');
+      else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status))console.error('[BAAK] Admin activity Realtime status:',status);
+    });
+}
+async function baakStopAdminRealtime(){
+  if(baakAdminRealtimeChannel&&baakSupabase){await baakSupabase.removeChannel(baakAdminRealtimeChannel);baakAdminRealtimeChannel=null;}
+}
+function baakRenderRemoteUpdate(){
+  // Never replace an open admin editor: it may contain unsaved work.
+  const adminOpen=baakIsAdmin()&&document.getElementById('adminModal')?.classList.contains('open');
+  if(adminOpen){showToast('Website content was updated by another administrator.');return;}
+  const scrollY=window.scrollY;
+  const active=document.activeElement;
+  const activeId=active&&active.id;
+  const selection=(active&&typeof active.selectionStart==='number')?{start:active.selectionStart,end:active.selectionEnd}:null;
+  const values={};
+  document.querySelectorAll('#app input, #app textarea, #app select').forEach((el,i)=>{
+    if(el.id)values[el.id]={value:el.value,checked:el.checked};
+    else values['__'+i]={value:el.value,checked:el.checked};
+  });
+  render({preservePosition:true});
+  document.querySelectorAll('#app input, #app textarea, #app select').forEach((el,i)=>{
+    const saved=el.id?values[el.id]:values['__'+i];
+    if(!saved)return;
+    if(el.type==='checkbox'||el.type==='radio')el.checked=saved.checked;else el.value=saved.value;
+  });
+  if(activeId){const next=document.getElementById(activeId);if(next){next.focus({preventScroll:true});if(selection&&typeof next.setSelectionRange==='function')try{next.setSelectionRange(selection.start,selection.end);}catch(_){}}}
+  requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'auto'}));
+}
 async function baakInitSupabase(){
   if(!baakConfigured()){console.warn('[BAAK] Supabase credentials are not configured. Running in preview mode; cloud writes and admin access are disabled.');return;}
   if(!window.supabase || !window.supabase.createClient){console.error('[BAAK] Supabase client library failed to load. Check the network/CDN connection; cloud mode is unavailable.');showToast('Supabase client failed to load. Check your internet connection.');return;}
   baakSupabase=window.supabase.createClient(window.BAAK_SUPABASE_URL,window.BAAK_SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true},realtime:{params:{eventsPerSecond:10}}});
   const {data:{session}}=await baakSupabase.auth.getSession();baakSession=session;
-  baakSupabase.auth.onAuthStateChange((_event,session)=>{baakSession=session;document.body.classList.toggle('baak-admin-authenticated',baakIsAdmin());if(baakIsSecretAdminRoute())baakEnterSecretAdminRoute();});
+  baakSupabase.auth.onAuthStateChange((_event,session)=>{
+    baakSession=session;
+    document.body.classList.toggle('baak-admin-authenticated',baakIsAdmin());
+    if(baakIsAdmin()){baakStartAdminRealtime();baakRefreshSubscriberCount();}
+    else baakStopAdminRealtime();
+    if(baakIsSecretAdminRoute())baakEnterSecretAdminRoute();
+  });
   await baakLoadCloudData();
-  baakRealtimeChannel=baakSupabase.channel('baak-site-data-live').on('postgres_changes',{event:'*',schema:'public',table:'baak_site_data',filter:'id=eq.primary'},payload=>{
-    if(payload.new && payload.new.payload){localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(payload.new.payload));if(!baakIsAdmin()){window.BAAK_REMOTE_DATA=payload.new.payload;render();}}
-  }).subscribe(status=>{if(status==='SUBSCRIBED'){console.info('[BAAK] Live content sync connected.');}else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){console.error('[BAAK] Realtime subscription status:',status);}});
+  baakRealtimeChannel=baakSupabase.channel('baak-site-data-live')
+    .on('postgres_changes',{event:'*',schema:'public',table:'baak_site_data',filter:'id=eq.primary'},payload=>{
+      if(!payload.new||!payload.new.payload)return;
+      if(baakIsAdmin()&&payload.new.updated_by===baakSession?.user?.id)return;
+      window.BAAK_REMOTE_DATA=payload.new.payload;
+      baakLastRemoteUpdatedAt=payload.new.updated_at||null;
+      try{localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(payload.new.payload));}catch(e){console.warn('[BAAK] Local cache update skipped:',e);}
+      baakRenderRemoteUpdate();
+    }).subscribe(status=>{
+      if(status==='SUBSCRIBED')console.info('[BAAK] Live content sync connected.');
+      else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status))console.error('[BAAK] Realtime content status:',status);
+    });
   baakCloudReady=true;
+  if(baakIsAdmin()){baakStartAdminRealtime();baakRefreshSubscriberCount();}
 }
 async function baakLoadCloudData(){
   if(!baakSupabase)return;
-  const {data,error}=await baakSupabase.from('baak_site_data').select('payload').eq('id',BAAK_DB_ROW_ID).maybeSingle();
+  const {data,error}=await baakSupabase.from('baak_site_data').select('payload,updated_at').eq('id',BAAK_DB_ROW_ID).maybeSingle();
   if(error){console.error('[BAAK] Cloud data load failed:',error.message);return;}
-  if(data&&data.payload){window.BAAK_REMOTE_DATA=data.payload;localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(data.payload));}
-  else if(baakIsAdmin()){
-    const seed=getDB();const {error:seedError}=await baakSupabase.from('baak_site_data').upsert({id:BAAK_DB_ROW_ID,payload:seed,updated_at:new Date().toISOString(),updated_by:baakSession.user.id});
-    if(seedError)console.error('[BAAK] Initial data seed failed:',seedError.message);else window.BAAK_REMOTE_DATA=seed;
+  if(data&&data.payload){
+    window.BAAK_REMOTE_DATA=data.payload;
+    baakLastRemoteUpdatedAt=data.updated_at||null;
+    try{localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(data.payload));}catch(e){console.warn('[BAAK] Local cache update skipped:',e);}
+  }else if(baakIsAdmin()){
+    const seed=getDB();
+    const {error:seedError}=await baakSupabase.from('baak_site_data').upsert({id:BAAK_DB_ROW_ID,payload:seed,updated_at:new Date().toISOString(),updated_by:baakSession.user.id});
+    if(seedError)console.error('[BAAK] Initial data seed failed:',seedError.message);
+    else window.BAAK_REMOTE_DATA=seed;
+  }else{
+    console.warn('[BAAK] No published cloud content row exists yet; the site is using its built-in initial content. An administrator must publish the first version.');
   }
-}
-async function baakPersistData(data){
-  if(!baakSupabase || !baakConfigured())return {ok:false,error:'Supabase credentials are not configured.'};
-  if(!baakIsAdmin())return {ok:false,error:'Administrator sign-in is required to publish changes.'};
-  baakSaveQueue=baakSaveQueue.catch(()=>{}).then(async()=>{
-    const {error}=await baakSupabase.from('baak_site_data').upsert({id:BAAK_DB_ROW_ID,payload:data,updated_at:new Date().toISOString(),updated_by:baakSession.user.id});
-    if(error)throw error;window.BAAK_REMOTE_DATA=data;return {ok:true};
-  });
-  try{return await baakSaveQueue;}catch(error){console.error('[BAAK] Save failed:',error);return {ok:false,error:error.message||'Cloud save failed'};}
 }
 async function baakUploadFile(file,folder){
   if(!baakRequireConfig())throw new Error('Supabase is not configured.');
@@ -817,7 +883,7 @@ function scrollToEnquiry(serviceTitle) {
   if (formSec) formSec.scrollIntoView({ behavior: 'smooth' });
 }
 
-function render() {
+function render(options = {}) {
   const path = route();
   const db = getDB();
   const app = document.getElementById('app');
@@ -855,7 +921,7 @@ function render() {
   const hero=app.querySelector('.hero');
   if(hero){const bg=getComputedStyle(hero).backgroundImage;const match=bg.match(/url\([\"']?(.*?)[\"']?\)/);if(match&&match[1]){const preload=new Image();preload.fetchPriority='high';preload.decoding='async';preload.src=match[1];}}
   app.querySelectorAll('img').forEach((img,index)=>{if(index===0&&img.getBoundingClientRect().top<window.innerHeight){img.loading='eager';img.fetchPriority='high';}img.decoding='async';});
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if(!options.preservePosition)window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderHomePage(db) {
@@ -1330,7 +1396,8 @@ function switchAdminTab(tabName) {
   document.getElementById(`tab-${tabName}`).classList.add('active');
   
   if (tabName === 'broadcast') {
-    const countNode=document.getElementById('adminSubscriberCount');countNode.textContent='…';if(baakSupabase&&baakIsAdmin()){baakSupabase.from('baak_subscribers').select('id',{count:'exact',head:true}).then(({count,error})=>{countNode.textContent=error?'—':String(count||0);});}else{countNode.textContent='0';}
+    const countNode=document.getElementById('adminSubscriberCount');if(countNode)countNode.textContent='…';
+    if(baakSupabase&&baakIsAdmin())baakRefreshSubscriberCount();else if(countNode)countNode.textContent='0';
   } else if (tabName === 'jobs') {
     renderAdminJobsList();
   } else if (tabName === 'news') {
@@ -1932,6 +1999,7 @@ if(baakMenuToggle&&baakMainNav){
 
 
 window.addEventListener('hashchange', ()=>{baakCloseMobileMenu();render();baakEnterSecretAdminRoute();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&baakSupabase&&baakCloudReady)baakLoadCloudData().then(()=>{if(!baakIsAdmin())baakRenderRemoteUpdate();}).catch(error=>console.warn('[BAAK] Visibility sync failed:',error));});
 window.addEventListener('DOMContentLoaded', async()=>{try{await baakInitSupabase();}catch(error){console.error('[BAAK] Supabase initialization failed:',error);}render();baakEnterSecretAdminRoute();});
 </script>
 </body>
