@@ -684,10 +684,13 @@ async function baakUploadFile(file,folder){
 }
 async function baakInsertSubmission(kind,payload){
   if(!baakRequireConfig())throw new Error('Supabase is not configured; submission was not saved.');
-  const {data,error}=await baakSupabase.from('baak_submissions')
-    .insert({kind,payload,source_url:location.href})
-    .select('id,created_at').single();
+  const {data,error}=await baakSupabase.rpc('baak_submit_submission',{
+    p_kind:kind,
+    p_payload:payload,
+    p_source_url:location.href
+  });
   if(error)throw error;
+  if(!data || !data.id)throw new Error('Submission was not confirmed by the database.');
   return data;
 }
 
