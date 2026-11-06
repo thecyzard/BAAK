@@ -357,9 +357,14 @@ button:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
           <small>Example: 150+</small>
         </div>
         <div class="field">
-          <label for="admStatLocation">Rooted in</label>
-          <input id="admStatLocation" type="text" maxlength="12" placeholder="TZ" autocomplete="off">
-          <small>Example: TZ</small>
+          <label for="admStatLocation">Location initial / short code</label>
+          <input id="admStatLocation" type="text" maxlength="20" placeholder="TZ" autocomplete="off">
+          <small>Controls the short text shown above the full location wording.</small>
+        </div>
+        <div class="field">
+          <label for="admStatLocationLabel">Full location wording</label>
+          <input id="admStatLocationLabel" type="text" maxlength="120" placeholder="Rooted in Tanzania" autocomplete="off">
+          <small>Editable full phrase. For example, replace “Rooted in Tanzania” with any wording you choose. This is not limited to changing TZ.</small>
         </div>
       </div>
       <div class="stats-admin-preview">
@@ -368,7 +373,7 @@ button:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
           <div><strong id="previewStatYear">2019</strong><span>Establishment Year</span></div>
           <div><strong id="previewStatSubsidiaries">07</strong><span>Subsidiary Companies</span></div>
           <div><strong id="previewStatProjects">150+</strong><span>Completed Projects</span></div>
-          <div><strong id="previewStatLocation">TZ</strong><span>Rooted in Tanzania</span></div>
+          <div><strong id="previewStatLocation">TZ</strong><span id="previewStatLocationLabel">Rooted in Tanzania</span></div>
         </div>
       </div>
       <div class="stats-admin-actions">
@@ -903,7 +908,8 @@ const DEFAULT_DATA = {
       establishmentYear: "2019",
       subsidiaryCompanies: "07",
       completedProjects: "150+",
-      location: "TZ"
+      location: "TZ",
+      locationLabel: "Rooted in Tanzania"
     }
   },
   subscribers: ['info@example.com', 'partner@baakgroup.com'],
@@ -1190,7 +1196,7 @@ function renderHomePage(db) {
       <div class="stat"><strong>${escapeHtml(db.group.stats?.establishmentYear ?? "2019")}</strong><span>Establishment Year</span></div>
       <div class="stat"><strong>${escapeHtml(db.group.stats?.subsidiaryCompanies ?? "07")}</strong><span>Subsidiary Companies</span></div>
       <div class="stat"><strong>${escapeHtml(db.group.stats?.completedProjects ?? "150+")}</strong><span>Completed Projects</span></div>
-      <div class="stat"><strong>${escapeHtml(db.group.stats?.location ?? "TZ")}</strong><span>Rooted in Tanzania</span></div>
+      <div class="stat"><strong>${escapeHtml(db.group.stats?.location ?? "TZ")}</strong><span>${escapeHtml(db.group.stats?.locationLabel ?? "Rooted in Tanzania")}</span></div>
     </div>
 
     <section class="section">
@@ -1670,7 +1676,8 @@ function loadAdminStats() {
     admStatYear: stats.establishmentYear ?? '2019',
     admStatSubsidiaries: stats.subsidiaryCompanies ?? '07',
     admStatProjects: stats.completedProjects ?? '150+',
-    admStatLocation: stats.location ?? 'TZ'
+    admStatLocation: stats.location ?? 'TZ',
+    admStatLocationLabel: stats.locationLabel ?? 'Rooted in Tanzania'
   };
   Object.entries(values).forEach(([id,value]) => {
     const field = document.getElementById(id);
@@ -1683,7 +1690,8 @@ function updateAdminStatsPreview() {
     ['admStatYear','previewStatYear'],
     ['admStatSubsidiaries','previewStatSubsidiaries'],
     ['admStatProjects','previewStatProjects'],
-    ['admStatLocation','previewStatLocation']
+    ['admStatLocation','previewStatLocation'],
+    ['admStatLocationLabel','previewStatLocationLabel']
   ];
   pairs.forEach(([inputId,previewId]) => {
     const input = document.getElementById(inputId);
@@ -1691,15 +1699,18 @@ function updateAdminStatsPreview() {
     if(input && preview) preview.textContent = input.value.trim() || '—';
   });
 }
+document.addEventListener('input', event => {
+  if(event.target && event.target.matches('#stats-admin-grid input, .stats-admin-grid input')) updateAdminStatsPreview();
+});
 async function saveAdminStats() {
   if(!baakIsAdmin() || !baakSupabase) {
     showToast('Sign in as an administrator before publishing.');
     return;
   }
-  const fields = ['admStatYear','admStatSubsidiaries','admStatProjects','admStatLocation'];
+  const fields = ['admStatYear','admStatSubsidiaries','admStatProjects','admStatLocation','admStatLocationLabel'];
   const values = fields.map(id => document.getElementById(id)?.value.trim() || '');
   if(values.some(value => !value)) {
-    showToast('Please complete all four statistics before saving.');
+    showToast('Please complete all five statistic fields before saving.');
     return;
   }
   const db = getDB();
@@ -1708,7 +1719,8 @@ async function saveAdminStats() {
     establishmentYear: values[0],
     subsidiaryCompanies: values[1],
     completedProjects: values[2],
-    location: values[3]
+    location: values[3],
+    locationLabel: values[4]
   };
   const status = document.getElementById('statsSaveStatus');
   if(status) status.textContent = 'Publishing changes…';
@@ -1721,7 +1733,7 @@ async function saveAdminStats() {
     return;
   }
   if(status) status.textContent = 'Published successfully. Visitors will receive the update in real time.';
-  showToast('Company statistics published and synced live.');
+  showToast('All statistics, including the full location wording, have been published and synced live.');
   render({preservePosition:true});
   loadAdminStats();
 }
