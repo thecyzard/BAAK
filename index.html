@@ -677,6 +677,8 @@ let baakLocalDBCache = null;
 let baakLocalDBLoaded = false;
 let baakRemoteRenderFrame = 0;
 let baakSubscriberCountPromise = null;
+let baakLiveSyncPromise = null;
+let baakPendingRemoteRender = false;
 function baakConfigured(){return !!(window.BAAK_SUPABASE_URL && window.BAAK_SUPABASE_ANON_KEY && /^https:\/\//.test(window.BAAK_SUPABASE_URL) && !window.BAAK_SUPABASE_URL.includes('PASTE_') && !window.BAAK_SUPABASE_ANON_KEY.includes('PASTE_'));}
 function baakIsAdmin(){return !!(baakSession && baakSession.user && baakSession.user.app_metadata && baakSession.user.app_metadata.role==='admin');}
 function baakRequireConfig(){if(!baakConfigured()||!baakSupabase){showToast('Supabase credentials are not configured yet.');return false;}return true;}
@@ -695,11 +697,17 @@ async function baakRefreshSubscriberCount(){
 function baakStartAdminRealtime(){
   if(!baakIsAdmin()||!baakSupabase||baakAdminRealtimeChannel)return;
   baakAdminRealtimeChannel=baakSupabase.channel('baak-admin-activity-live')
-    .on('postgres_changes',{event:'INSERT',schema:'public',table:'baak_submissions'},payload=>{
-      if(!baakIsAdmin()||!payload.new)return;
+    .on('postgres_changes',{event:'*',schema:'public',table:'baak_submissions'},payload=>{
+      if(!baakIsAdmin())return;
       const inbox=document.getElementById('tab-submissions');
-      if(inbox&&inbox.classList.contains('active')){clearTimeout(baakAdminInboxRefreshTimer);baakAdminInboxRefreshTimer=setTimeout(()=>loadAdminSubmissions(),180);}
-      showToast(payload.new.kind==='job_application'?'New job application received.':'New customer enquiry received.');
+      if(inbox&&inbox.classList.contains('active')){
+        clearTimeout(baakAdminInboxRefreshTimer);
+        baakAdminInboxRefreshTimer=setTimeout(()=>loadAdminSubmissions(),180);
+      }
+      // Keep private inbox events inside authenticated admin sessions only.
+      if(payload.eventType==='INSERT'&&payload.new){
+        showToast(payload.new.kind==='job_application'?'New job application received.':'New customer enquiry received.');
+      }
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'baak_subscribers'},()=>{
       baakRefreshSubscriberCount();
@@ -723,7 +731,8 @@ function baakRenderRemoteUpdate(){
 function baakRenderRemoteUpdateNow(){
   // Never replace an open admin editor: it may contain unsaved work.
   const adminOpen=baakIsAdmin()&&document.getElementById('adminModal')?.classList.contains('open');
-  if(adminOpen){showToast('Website content was updated by another administrator.');return;}
+  if(adminOpen){baakPendingRemoteRender=true;showToast('Website content changed in the background. Close the editor to view the latest published version.');return;}
+  baakPendingRemoteRender=false;
   const scrollY=window.scrollY;
   const active=document.activeElement;
   const activeId=active&&active.id;
@@ -742,6 +751,30 @@ function baakRenderRemoteUpdateNow(){
   if(activeId){const next=document.getElementById(activeId);if(next){next.focus({preventScroll:true});if(selection&&typeof next.setSelectionRange==='function')try{next.setSelectionRange(selection.start,selection.end);}catch(_){}}}
   requestAnimationFrame(()=>window.scrollTo({top:scrollY,behavior:'auto'}));
 }
+async function baakSyncLiveContent(){
+  if(!baakSupabase||!baakCloudReady)return false;
+  if(baakLiveSyncPromise)return baakLiveSyncPromise;
+  baakLiveSyncPromise=(async()=>{
+    const {data,error}=await baakSupabase.from('baak_site_data')
+      .select('payload,updated_at').eq('id',BAAK_DB_ROW_ID).maybeSingle();
+    if(error)throw error;
+    if(!data||!data.payload)return false;
+    const incomingStamp=data.updated_at||null;
+    if(incomingStamp&&baakLastRemoteUpdatedAt&&Date.parse(incomingStamp)<Date.parse(baakLastRemoteUpdatedAt))return false;
+    const changed=(incomingStamp!==baakLastRemoteUpdatedAt)||
+      (JSON.stringify(data.payload)!==JSON.stringify(window.BAAK_REMOTE_DATA));
+    if(!changed)return false;
+    window.BAAK_REMOTE_DATA=data.payload;
+    baakLastRemoteUpdatedAt=incomingStamp;
+    baakCacheDB(data.payload);
+    baakRenderRemoteUpdate();
+    return true;
+  })();
+  try{return await baakLiveSyncPromise;}
+  catch(error){console.warn('[BAAK] Live content reconciliation failed:',error);return false;}
+  finally{baakLiveSyncPromise=null;}
+}
+
 async function baakInitSupabase(){
   if(!baakConfigured()){console.warn('[BAAK] Supabase credentials are not configured. Running in preview mode; cloud writes and admin access are disabled.');return;}
   if(!window.supabase || !window.supabase.createClient){console.error('[BAAK] Supabase client library failed to load. Check the network/CDN connection; cloud mode is unavailable.');showToast('Supabase client failed to load. Check your internet connection.');return;}
@@ -755,19 +788,29 @@ async function baakInitSupabase(){
     if(baakIsSecretAdminRoute())baakEnterSecretAdminRoute();
   });
   await baakLoadCloudData();
+  baakCloudReady=true;
   baakRealtimeChannel=baakSupabase.channel('baak-site-data-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'baak_site_data',filter:'id=eq.primary'},payload=>{
       if(!payload.new||!payload.new.payload)return;
-      if(baakIsAdmin()&&payload.new.updated_by===baakSession?.user?.id)return;
+      const incomingStamp=payload.new.updated_at||null;
+      if(incomingStamp&&baakLastRemoteUpdatedAt&&Date.parse(incomingStamp)<Date.parse(baakLastRemoteUpdatedAt))return;
+      const changed=(incomingStamp!==baakLastRemoteUpdatedAt)||
+        (JSON.stringify(payload.new.payload)!==JSON.stringify(window.BAAK_REMOTE_DATA));
+      if(!changed)return;
       window.BAAK_REMOTE_DATA=payload.new.payload;
-      baakLastRemoteUpdatedAt=payload.new.updated_at||null;
+      baakLastRemoteUpdatedAt=incomingStamp;
       baakCacheDB(payload.new.payload);
       baakRenderRemoteUpdate();
     }).subscribe(status=>{
-      if(status==='SUBSCRIBED')console.info('[BAAK] Live content sync connected.');
-      else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status))console.error('[BAAK] Realtime content status:',status);
+      if(status==='SUBSCRIBED'){
+        console.info('[BAAK] Live content sync connected.');
+        // Reconcile immediately after the initial join and every automatic reconnect,
+        // so updates made while this browser was offline cannot be missed.
+        baakSyncLiveContent();
+      }else if(['CHANNEL_ERROR','TIMED_OUT','CLOSED'].includes(status)){
+        console.error('[BAAK] Realtime content status:',status);
+      }
     });
-  baakCloudReady=true;
   if(baakIsAdmin()){baakStartAdminRealtime();baakRefreshSubscriberCount();}
 }
 async function baakLoadCloudData(options={}){
@@ -2311,7 +2354,23 @@ if(baakMenuToggle&&baakMainNav){
 
 
 window.addEventListener('hashchange', ()=>{baakCloseMobileMenu();render();baakEnterSecretAdminRoute();});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&baakSupabase&&baakCloudReady)baakLoadCloudData().then(loaded=>{if(loaded&&!baakIsAdmin())baakRenderRemoteUpdate();}).catch(error=>console.warn('[BAAK] Visibility sync failed:',error));});
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&baakSupabase&&baakCloudReady)baakSyncLiveContent();
+});
+window.addEventListener('online',()=>{
+  if(baakSupabase&&baakCloudReady)baakSyncLiveContent();
+});
+// If an administrator kept the editor open during another publish, apply the newest
+// public version as soon as the editor closes; never overwrite unsaved form fields.
+const baakAdminModalForLiveSync=document.getElementById('adminModal');
+if(baakAdminModalForLiveSync&&window.MutationObserver){
+  new MutationObserver(()=>{
+    if(!baakAdminModalForLiveSync.classList.contains('open')&&baakPendingRemoteRender){
+      baakPendingRemoteRender=false;
+      baakRenderRemoteUpdate();
+    }
+  }).observe(baakAdminModalForLiveSync,{attributes:true,attributeFilter:['class']});
+}
 window.addEventListener('DOMContentLoaded', async()=>{
   // Paint cached/default content immediately; network initialization must not block first render.
   render();
