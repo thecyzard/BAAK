@@ -2232,8 +2232,15 @@ async function baakSetSubmissionHidden(id,hide){
   if(button){button.disabled=true;button.textContent=hide?'Hiding…':'Restoring…';}
   try{
     const nextPayload={...(row.payload||{}),_admin_hidden:!!hide};
-    const {data,error}=await baakSupabase.from('baak_submissions').update({payload:nextPayload}).eq('id',id).select('id,kind,payload,created_at').single();
+    const {data,error}=await baakSupabase.from('baak_submissions')
+      .update({payload:nextPayload})
+      .eq('id',id)
+      .select('id,kind,payload,created_at')
+      .maybeSingle();
     if(error)throw error;
+    if(!data){
+      throw new Error('No row was updated. Check that the admin UPDATE policy and admin SELECT policy exist for public.baak_submissions, and confirm this submission still exists.');
+    }
     baakSubmissionRows=baakSubmissionRows.map(item=>String(item.id)===String(id)?data:item);
     renderAdminSubmissions();
     showToast(hide?'Submission moved to Hidden.':'Submission restored to Active.');
