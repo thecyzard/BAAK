@@ -175,6 +175,24 @@ h1 em{font-style:normal;color:var(--gold-hover)}
 .exec-metric-value{font-size:26px;font-weight:900;color:var(--navy);line-height:1}
 .exec-metric-subtitle{font-size:11px;color:var(--muted);font-weight:600;margin-top:4px}
 .exec-status-text{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#15803d}
+.stats-admin-heading{margin-bottom:26px;max-width:680px}
+.stats-admin-heading h3{font-size:24px;line-height:1.2;letter-spacing:-.035em;color:var(--navy);margin:8px 0}
+.stats-admin-heading p{font-size:12px;line-height:1.8;color:var(--muted);margin:0}
+.stats-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;padding:24px;background:#f8fafc;border:1px solid var(--line)}
+.stats-admin-grid .field small{display:block;color:var(--muted);font-size:10px;margin-top:6px}
+.stats-admin-grid input{width:100%;padding:13px 14px;border:1px solid #d7dee8;background:#fff;color:var(--navy);font-size:15px;font-weight:700;outline:none;transition:border-color .2s,box-shadow .2s}
+.stats-admin-grid input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(195,136,43,.12)}
+.stats-admin-preview{margin-top:20px;border:1px solid var(--line);background:#fff;padding:20px}
+.stats-admin-preview-label{font-size:9px;letter-spacing:.18em;font-weight:800;color:var(--gold);margin-bottom:16px}
+.stats-admin-preview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;text-align:center}
+.stats-admin-preview-grid>div{padding:14px 8px;border-right:1px solid var(--line)}
+.stats-admin-preview-grid>div:last-child{border-right:0}
+.stats-admin-preview-grid strong{display:block;color:var(--navy);font-size:clamp(22px,3vw,30px);font-weight:900;letter-spacing:-.05em;line-height:1.15;overflow-wrap:anywhere}
+.stats-admin-preview-grid span{display:block;margin-top:7px;color:var(--muted);font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.stats-admin-actions{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:22px;flex-wrap:wrap}
+.stats-admin-actions #statsSaveStatus{font-size:11px;color:var(--muted)}
+@media(max-width:680px){.stats-admin-grid{grid-template-columns:1fr;padding:16px}.stats-admin-preview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-admin-preview-grid>div:nth-child(2){border-right:0}.stats-admin-preview-grid>div:nth-child(-n+2){border-bottom:1px solid var(--line)}.stats-admin-actions{align-items:stretch}.stats-admin-actions .btn{width:100%}}
+
 
 .toast{position:fixed;bottom:20px;left:20px;background:var(--navy);color:#fff;border-left:4px solid var(--gold);padding:14px 22px;font-size:12px;font-weight:600;z-index:1001;opacity:0;pointer-events:none;transition:.3s;transform:translateY(10px)}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -278,11 +296,56 @@ button:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
 
     <div class="admin-nav-tabs">
       <button class="admin-tab-btn active" onclick="switchAdminTab('media')">Media & Content</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('stats')">Company Statistics</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('news')">News & CSR</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('reports')">Financial Reports</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('broadcast')">Broadcast</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('jobs')">Careers</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('submissions')">Enquiries & Applications</button>
+    </div>
+
+    <!-- Company statistics: these values are published to the same live site-data record. -->
+    <div class="admin-panel" id="tab-stats">
+      <div class="stats-admin-heading">
+        <div class="eyebrow">HOMEPAGE CONTENT</div>
+        <h3>Company Statistics</h3>
+        <p>Edit the four figures displayed beneath the homepage hero. Changes are saved to the BAAK cloud content record and distributed to visitors in real time.</p>
+      </div>
+      <div class="stats-admin-grid">
+        <div class="field">
+          <label for="admStatYear">Establishment Year</label>
+          <input id="admStatYear" type="text" maxlength="12" placeholder="2019" autocomplete="off">
+          <small>Example: 2019</small>
+        </div>
+        <div class="field">
+          <label for="admStatSubsidiaries">Subsidiary Companies</label>
+          <input id="admStatSubsidiaries" type="text" maxlength="12" placeholder="07" autocomplete="off">
+          <small>Example: 07</small>
+        </div>
+        <div class="field">
+          <label for="admStatProjects">Completed Projects</label>
+          <input id="admStatProjects" type="text" maxlength="16" placeholder="150+" autocomplete="off">
+          <small>Example: 150+</small>
+        </div>
+        <div class="field">
+          <label for="admStatLocation">Rooted in</label>
+          <input id="admStatLocation" type="text" maxlength="12" placeholder="TZ" autocomplete="off">
+          <small>Example: TZ</small>
+        </div>
+      </div>
+      <div class="stats-admin-preview">
+        <div class="stats-admin-preview-label">LIVE PREVIEW</div>
+        <div class="stats-admin-preview-grid">
+          <div><strong id="previewStatYear">2019</strong><span>Establishment Year</span></div>
+          <div><strong id="previewStatSubsidiaries">07</strong><span>Subsidiary Companies</span></div>
+          <div><strong id="previewStatProjects">150+</strong><span>Completed Projects</span></div>
+          <div><strong id="previewStatLocation">TZ</strong><span>Rooted in Tanzania</span></div>
+        </div>
+      </div>
+      <div class="stats-admin-actions">
+        <span id="statsSaveStatus" role="status">Changes are not published until you save.</span>
+        <button type="button" class="btn gold" onclick="saveAdminStats()">Save & Publish Changes</button>
+      </div>
     </div>
 
     <!-- TAB 1: Media & Content Studio -->
@@ -658,6 +721,9 @@ async function baakLoadCloudData(){
   if(error){console.error('[BAAK] Cloud data load failed:',error.message);return;}
   if(data&&data.payload){
     window.BAAK_REMOTE_DATA=data.payload;
+    if(!window.BAAK_REMOTE_DATA.group)window.BAAK_REMOTE_DATA.group={};
+    if(!window.BAAK_REMOTE_DATA.group.stats)window.BAAK_REMOTE_DATA.group.stats={...DEFAULT_DATA.group.stats};
+    else window.BAAK_REMOTE_DATA.group.stats={...DEFAULT_DATA.group.stats,...window.BAAK_REMOTE_DATA.group.stats};
     baakLastRemoteUpdatedAt=data.updated_at||null;
     try{localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(data.payload));}catch(e){console.warn('[BAAK] Local cache update skipped:',e);}
   }else if(baakIsAdmin()){
@@ -723,7 +789,13 @@ const DEFAULT_DATA = {
     tagline: "Beyond Boundaries. Connecting Opportunities Across Industries.",
     description: "BAAK GROUP is a Tanzanian enterprise established to build and manage high-performing businesses across key economic sectors. Guided by Beyond Boundaries, the group connects construction, logistics, international trade, automotive, cosmetics, grooming, and interior furnishings under one parent vision.",
     heroImg: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=2200&q=88",
-    aboutImg: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85"
+    aboutImg: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=85",
+    stats: {
+      establishmentYear: "2019",
+      subsidiaryCompanies: "07",
+      completedProjects: "150+",
+      location: "TZ"
+    }
   },
   subscribers: ['info@example.com', 'partner@baakgroup.com'],
   news: [
@@ -862,6 +934,12 @@ const DEFAULT_DATA = {
   }
 };
 
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[char]));
+}
+
 function getDB() {
   if(window.BAAK_REMOTE_DATA)return window.BAAK_REMOTE_DATA;
   const local = localStorage.getItem(BAAK_DB_CACHE_KEY);
@@ -869,10 +947,38 @@ function getDB() {
   try{const parsed=JSON.parse(local);if(!parsed.subscribers)parsed.subscribers=DEFAULT_DATA.subscribers;if(!parsed.jobs)parsed.jobs=DEFAULT_DATA.jobs;if(!parsed.news)parsed.news=DEFAULT_DATA.news;if(!parsed.reports)parsed.reports=DEFAULT_DATA.reports;return parsed;}catch(e){console.error('[BAAK] Invalid local cache',e);return DEFAULT_DATA;}
 }
 
-function saveDB(data) {
-  localStorage.setItem(BAAK_DB_CACHE_KEY, JSON.stringify(data));
-  window.BAAK_REMOTE_DATA=data;
-  if(baakSupabase){baakPersistData(data).then(result=>{if(!result.ok)showToast('Cloud save failed: '+result.error);});}
+async function baakPersistData(data) {
+  if(!baakSupabase || !baakIsAdmin()) return {ok:false,error:'Administrator session is not active.'};
+  try {
+    const payload = JSON.parse(JSON.stringify(data));
+    const {error} = await baakSupabase.from('baak_site_data').upsert({
+      id: BAAK_DB_ROW_ID,
+      payload,
+      updated_at: new Date().toISOString(),
+      updated_by: baakSession.user.id
+    }, {onConflict:'id'});
+    if(error) throw error;
+    window.BAAK_REMOTE_DATA = payload;
+    baakLastRemoteUpdatedAt = new Date().toISOString();
+    return {ok:true};
+  } catch(error) {
+    console.error('[BAAK] Cloud content save failed:', error);
+    return {ok:false,error:error.message || 'Cloud save failed.'};
+  }
+}
+
+async function saveDB(data) {
+  if(!baakIsAdmin() || !baakSupabase) {
+    showToast('An authenticated administrator session is required to publish changes.');
+    return false;
+  }
+  const result = await baakPersistData(data);
+  if(!result.ok) {
+    showToast('Cloud save failed: ' + result.error);
+    return false;
+  }
+  try{localStorage.setItem(BAAK_DB_CACHE_KEY, JSON.stringify(data));}catch(error){console.warn('[BAAK] Local cache update skipped:',error);}
+  return true;
 }
 
 function route() {
@@ -943,10 +1049,10 @@ function renderHomePage(db) {
     </section>
 
     <div class="stats">
-      <div class="stat"><strong>2019</strong><span>Establishment Year</span></div>
-      <div class="stat"><strong>07</strong><span>Subsidiary Companies</span></div>
-      <div class="stat"><strong>150+</strong><span>Completed Projects</span></div>
-      <div class="stat"><strong>TZ</strong><span>Rooted in Tanzania</span></div>
+      <div class="stat"><strong>${escapeHtml(db.group.stats?.establishmentYear ?? "2019")}</strong><span>Establishment Year</span></div>
+      <div class="stat"><strong>${escapeHtml(db.group.stats?.subsidiaryCompanies ?? "07")}</strong><span>Subsidiary Companies</span></div>
+      <div class="stat"><strong>${escapeHtml(db.group.stats?.completedProjects ?? "150+")}</strong><span>Completed Projects</span></div>
+      <div class="stat"><strong>${escapeHtml(db.group.stats?.location ?? "TZ")}</strong><span>Rooted in Tanzania</span></div>
     </div>
 
     <section class="section">
@@ -1398,7 +1504,9 @@ function switchAdminTab(tabName) {
   event.target.classList.add('active');
   document.getElementById(`tab-${tabName}`).classList.add('active');
   
-  if (tabName === 'broadcast') {
+  if (tabName === 'stats') {
+    loadAdminStats();
+  } else if (tabName === 'broadcast') {
     const countNode=document.getElementById('adminSubscriberCount');if(countNode)countNode.textContent='…';
     if(baakSupabase&&baakIsAdmin())baakRefreshSubscriberCount();else if(countNode)countNode.textContent='0';
   } else if (tabName === 'jobs') {
@@ -1415,7 +1523,69 @@ function switchAdminTab(tabName) {
 function toggleAdminModal(show) {
   if(show && !baakIsAdmin()){document.getElementById('supabaseLoginModal').classList.add('open');return;}
   document.getElementById('adminModal').classList.toggle('open', show);
-  if(show) {loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();}
+  if(show) {loadAdminCompanyData();loadAdminStats();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();}
+}
+
+function loadAdminStats() {
+  const stats = getDB().group?.stats || DEFAULT_DATA.group.stats;
+  const values = {
+    admStatYear: stats.establishmentYear ?? '2019',
+    admStatSubsidiaries: stats.subsidiaryCompanies ?? '07',
+    admStatProjects: stats.completedProjects ?? '150+',
+    admStatLocation: stats.location ?? 'TZ'
+  };
+  Object.entries(values).forEach(([id,value]) => {
+    const field = document.getElementById(id);
+    if(field) field.value = value;
+  });
+  updateAdminStatsPreview();
+}
+function updateAdminStatsPreview() {
+  const pairs = [
+    ['admStatYear','previewStatYear'],
+    ['admStatSubsidiaries','previewStatSubsidiaries'],
+    ['admStatProjects','previewStatProjects'],
+    ['admStatLocation','previewStatLocation']
+  ];
+  pairs.forEach(([inputId,previewId]) => {
+    const input = document.getElementById(inputId);
+    const preview = document.getElementById(previewId);
+    if(input && preview) preview.textContent = input.value.trim() || '—';
+  });
+}
+async function saveAdminStats() {
+  if(!baakIsAdmin() || !baakSupabase) {
+    showToast('Sign in as an administrator before publishing.');
+    return;
+  }
+  const fields = ['admStatYear','admStatSubsidiaries','admStatProjects','admStatLocation'];
+  const values = fields.map(id => document.getElementById(id)?.value.trim() || '');
+  if(values.some(value => !value)) {
+    showToast('Please complete all four statistics before saving.');
+    return;
+  }
+  const db = getDB();
+  db.group = db.group || {};
+  db.group.stats = {
+    establishmentYear: values[0],
+    subsidiaryCompanies: values[1],
+    completedProjects: values[2],
+    location: values[3]
+  };
+  const status = document.getElementById('statsSaveStatus');
+  if(status) status.textContent = 'Publishing changes…';
+  const button = document.querySelector('#tab-stats .stats-admin-actions .btn');
+  if(button) button.disabled = true;
+  const saved = await saveDB(db);
+  if(button) button.disabled = false;
+  if(!saved) {
+    if(status) status.textContent = 'Cloud save failed. Your published values have not changed.';
+    return;
+  }
+  if(status) status.textContent = 'Published successfully. Visitors will receive the update in real time.';
+  showToast('Company statistics published and synced live.');
+  render({preservePosition:true});
+  loadAdminStats();
 }
 
 function loadAdminCompanyData() {
@@ -1451,7 +1621,7 @@ function loadAdminImageSlot() {
 
 async function handleAdminFileUpload(input){const file=input.files&&input.files[0];if(!file)return;try{showToast('Uploading media to secure cloud storage…');const url=await baakUploadFile(file,'admin-media');document.getElementById('admImgUrl').value=url;const preview=document.getElementById('adminLivePreview');if(preview){preview.src=url;preview.style.display='block';}showToast('Media uploaded to Supabase Storage. Save changes to publish.');}catch(error){showToast('Upload failed: '+error.message);console.error(error);}}
 
-function saveAdminData() {
+async function saveAdminData() {
   const sel = document.getElementById('adminCompanySelect').value;
   const slot = document.getElementById('adminImageSlotSelect').value;
   const newImg = document.getElementById('admImgUrl').value;
@@ -1470,7 +1640,8 @@ function saveAdminData() {
     if (slot === 'hero') db.companies[sel].image = newImg;
     else db.companies[sel].aboutImg = newImg;
   }
-  saveDB(db);
+  const saved = await saveDB(db);
+  if(!saved) return;
   showToast('Target image saved and synced to live website!');
   toggleAdminModal(false);
   render();
