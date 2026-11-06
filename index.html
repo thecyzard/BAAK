@@ -12,6 +12,13 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://htykjqxwqdkwxvjchyvy.supabase.co">
+<link rel="preconnect" href="https://images.unsplash.com">
+<link rel="dns-prefetch" href="https://fonts.googleapis.com">
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://htykjqxwqdkwxvjchyvy.supabase.co">
+<link rel="dns-prefetch" href="https://images.unsplash.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--navy:#1D2C59;--gold:#C3882B;--gold-hover:#EB9D23;--ink:#101828;--muted:#667085;--paper:#F0F3F4;--white:#fff;--line:#e5e9ef;--shadow:0 22px 60px rgba(16,24,40,.11)}
@@ -167,8 +174,30 @@ h1 em{font-style:normal;color:var(--gold-hover)}
 .admin-nav-tabs{display:flex;gap:4px;border-bottom:2px solid var(--line);margin-bottom:25px;flex-wrap:wrap}
 .admin-tab-btn{padding:12px 22px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:none;border:none;border-bottom:3px solid transparent;cursor:pointer;color:var(--muted);transition:.2s}
 .admin-tab-btn.active{color:var(--navy);border-color:var(--gold)}
-.admin-panel{display:none}
+ .admin-panel{display:none}
 .admin-panel.active{display:block}
+.submission-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.submission-head h3{margin:0;color:var(--navy);font-size:18px;letter-spacing:-.025em}
+.submission-head p{font-size:12px;color:var(--muted);margin:4px 0 0}
+.submission-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;margin-bottom:16px;background:#f8fafc;border:1px solid var(--line)}
+.submission-view-tabs{display:flex;gap:5px;align-items:center}
+.submission-view-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid transparent;background:transparent;color:var(--muted);padding:9px 13px;font:700 11px Inter,sans-serif;cursor:pointer;transition:.2s}
+.submission-view-btn span{min-width:20px;padding:2px 6px;border-radius:20px;background:#e8edf5;color:var(--navy);font-size:10px;text-align:center}
+.submission-view-btn.active{background:#fff;border-color:var(--line);color:var(--navy);box-shadow:0 1px 3px rgba(20,35,65,.06)}
+.submission-view-btn.active span{background:var(--navy);color:#fff}
+.submission-private-note{font-size:10px;color:var(--muted)}
+.submission-card{padding:16px;border:1px solid var(--line);background:var(--surface,#fff);margin-bottom:10px;border-left:3px solid var(--gold)}
+.submission-card.is-hidden{border-left-color:#98a2b3;opacity:.88}
+.submission-card-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.submission-card-title{color:var(--navy);font-size:13px;font-weight:800}
+.submission-card-date{color:var(--muted);font-size:10px}
+.submission-card-detail{font-size:12px;margin:5px 0;color:var(--ink);overflow-wrap:anywhere}
+.submission-card-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.submission-card-actions small{color:var(--muted);font-size:10px}
+.submission-hide-btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:transparent;color:var(--navy);padding:8px 11px;font:700 10px Inter,sans-serif;cursor:pointer;transition:.2s}
+.submission-hide-btn:hover{border-color:var(--gold);background:#fbf8f1}
+.submission-empty{padding:30px 16px;text-align:center;border:1px dashed var(--line);color:var(--muted);font-size:12px}
+@media(max-width:600px){.submission-toolbar{align-items:flex-start}.submission-private-note{width:100%}.submission-view-btn{padding:8px 10px}}
 
 .exec-metric-card{background:#f8fafc;border:1px solid var(--line);border-left:4px solid var(--navy);padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between}
 .exec-metric-title{font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
@@ -212,7 +241,7 @@ body.baak-secret-admin-route #site-footer { display:none !important; }
 body.baak-secret-admin-route { min-height:100vh; background:var(--off-white,#f0f3f4); }
 button:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
 <body>
 
@@ -552,9 +581,16 @@ button:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
 
     <!-- TAB 6: Private enquiries and recruitment inbox -->
     <div class="admin-panel" id="tab-submissions">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
-        <div><h3 style="margin:0;color:var(--navy)">Enquiries & Applications</h3><p style="font-size:12px;color:var(--muted);margin:4px 0 0">Private submissions received through the website.</p></div>
+      <div class="submission-head">
+        <div><h3>Enquiries & Applications</h3><p>Private submissions received through the website.</p></div>
         <button class="btn outline small" type="button" onclick="loadAdminSubmissions()">Refresh Inbox</button>
+      </div>
+      <div class="submission-toolbar">
+        <div class="submission-view-tabs" role="tablist" aria-label="Submission views">
+          <button type="button" class="submission-view-btn active" id="submissionViewActive" onclick="setSubmissionView('active')">Active <span id="submissionActiveCount">0</span></button>
+          <button type="button" class="submission-view-btn" id="submissionViewHidden" onclick="setSubmissionView('hidden')">Hidden <span id="submissionHiddenCount">0</span></button>
+        </div>
+        <span class="submission-private-note">Hiding keeps the record safely stored.</span>
       </div>
       <div id="adminSubmissionList"><p style="font-size:12px;color:var(--muted)">Select this tab to load submissions.</p></div>
     </div>
@@ -630,19 +666,31 @@ let baakSession = null;
 let baakCloudReady = false;
 let baakRealtimeChannel = null;
 let baakAdminRealtimeChannel = null;
+let baakAdminInboxRefreshTimer = null;
 let baakSaveQueue = Promise.resolve();
 let baakLastRemoteUpdatedAt = null;
+let baakCloudLoadPromise = null;
+let baakLastCloudLoadAt = 0;
 const BAAK_DB_ROW_ID = 'primary';
 const BAAK_DB_CACHE_KEY = 'baak_master_db_v26';
+let baakLocalDBCache = null;
+let baakLocalDBLoaded = false;
+let baakRemoteRenderFrame = 0;
+let baakSubscriberCountPromise = null;
 function baakConfigured(){return !!(window.BAAK_SUPABASE_URL && window.BAAK_SUPABASE_ANON_KEY && /^https:\/\//.test(window.BAAK_SUPABASE_URL) && !window.BAAK_SUPABASE_URL.includes('PASTE_') && !window.BAAK_SUPABASE_ANON_KEY.includes('PASTE_'));}
 function baakIsAdmin(){return !!(baakSession && baakSession.user && baakSession.user.app_metadata && baakSession.user.app_metadata.role==='admin');}
 function baakRequireConfig(){if(!baakConfigured()||!baakSupabase){showToast('Supabase credentials are not configured yet.');return false;}return true;}
 async function baakRefreshSubscriberCount(){
   const node=document.getElementById('adminSubscriberCount');
   if(!node||!baakIsAdmin()||!baakSupabase)return;
-  const {count,error}=await baakSupabase.from('baak_subscribers').select('id',{count:'exact',head:true});
-  const current=document.getElementById('adminSubscriberCount');
-  if(current)current.textContent=error?'—':String(count||0);
+  if(baakSubscriberCountPromise)return baakSubscriberCountPromise;
+  baakSubscriberCountPromise=(async()=>{
+    const {count,error}=await baakSupabase.from('baak_subscribers').select('id',{count:'exact',head:true});
+    const current=document.getElementById('adminSubscriberCount');
+    if(current)current.textContent=error?'—':String(count||0);
+  })();
+  try{await baakSubscriberCountPromise;}catch(error){console.warn('[BAAK] Subscriber count refresh failed:',error);}
+  finally{baakSubscriberCountPromise=null;}
 }
 function baakStartAdminRealtime(){
   if(!baakIsAdmin()||!baakSupabase||baakAdminRealtimeChannel)return;
@@ -650,7 +698,7 @@ function baakStartAdminRealtime(){
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'baak_submissions'},payload=>{
       if(!baakIsAdmin()||!payload.new)return;
       const inbox=document.getElementById('tab-submissions');
-      if(inbox&&inbox.classList.contains('active'))loadAdminSubmissions();
+      if(inbox&&inbox.classList.contains('active')){clearTimeout(baakAdminInboxRefreshTimer);baakAdminInboxRefreshTimer=setTimeout(()=>loadAdminSubmissions(),180);}
       showToast(payload.new.kind==='job_application'?'New job application received.':'New customer enquiry received.');
     })
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'baak_subscribers'},()=>{
@@ -666,6 +714,13 @@ async function baakStopAdminRealtime(){
   if(baakAdminRealtimeChannel&&baakSupabase){await baakSupabase.removeChannel(baakAdminRealtimeChannel);baakAdminRealtimeChannel=null;}
 }
 function baakRenderRemoteUpdate(){
+  if(baakRemoteRenderFrame)return;
+  baakRemoteRenderFrame=requestAnimationFrame(()=>{
+    baakRemoteRenderFrame=0;
+    baakRenderRemoteUpdateNow();
+  });
+}
+function baakRenderRemoteUpdateNow(){
   // Never replace an open admin editor: it may contain unsaved work.
   const adminOpen=baakIsAdmin()&&document.getElementById('adminModal')?.classList.contains('open');
   if(adminOpen){showToast('Website content was updated by another administrator.');return;}
@@ -706,7 +761,7 @@ async function baakInitSupabase(){
       if(baakIsAdmin()&&payload.new.updated_by===baakSession?.user?.id)return;
       window.BAAK_REMOTE_DATA=payload.new.payload;
       baakLastRemoteUpdatedAt=payload.new.updated_at||null;
-      try{localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(payload.new.payload));}catch(e){console.warn('[BAAK] Local cache update skipped:',e);}
+      baakCacheDB(payload.new.payload);
       baakRenderRemoteUpdate();
     }).subscribe(status=>{
       if(status==='SUBSCRIBED')console.info('[BAAK] Live content sync connected.');
@@ -715,25 +770,36 @@ async function baakInitSupabase(){
   baakCloudReady=true;
   if(baakIsAdmin()){baakStartAdminRealtime();baakRefreshSubscriberCount();}
 }
-async function baakLoadCloudData(){
+async function baakLoadCloudData(options={}){
   if(!baakSupabase)return;
-  const {data,error}=await baakSupabase.from('baak_site_data').select('payload,updated_at').eq('id',BAAK_DB_ROW_ID).maybeSingle();
-  if(error){console.error('[BAAK] Cloud data load failed:',error.message);return;}
-  if(data&&data.payload){
-    window.BAAK_REMOTE_DATA=data.payload;
-    if(!window.BAAK_REMOTE_DATA.group)window.BAAK_REMOTE_DATA.group={};
-    if(!window.BAAK_REMOTE_DATA.group.stats)window.BAAK_REMOTE_DATA.group.stats={...DEFAULT_DATA.group.stats};
-    else window.BAAK_REMOTE_DATA.group.stats={...DEFAULT_DATA.group.stats,...window.BAAK_REMOTE_DATA.group.stats};
-    baakLastRemoteUpdatedAt=data.updated_at||null;
-    try{localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(data.payload));}catch(e){console.warn('[BAAK] Local cache update skipped:',e);}
-  }else if(baakIsAdmin()){
-    const seed=getDB();
-    const {error:seedError}=await baakSupabase.from('baak_site_data').upsert({id:BAAK_DB_ROW_ID,payload:seed,updated_at:new Date().toISOString(),updated_by:baakSession.user.id});
-    if(seedError)console.error('[BAAK] Initial data seed failed:',seedError.message);
-    else window.BAAK_REMOTE_DATA=seed;
-  }else{
-    console.warn('[BAAK] No published cloud content row exists yet; the site is using its built-in initial content. An administrator must publish the first version.');
-  }
+  const force=options.force===true;
+  // Coalesce simultaneous requests and avoid refetching every time a tab regains focus.
+  if(baakCloudLoadPromise)return baakCloudLoadPromise;
+  if(!force && Date.now()-baakLastCloudLoadAt<20000)return;
+  baakCloudLoadPromise=(async()=>{
+    const {data,error}=await baakSupabase.from('baak_site_data').select('payload,updated_at').eq('id',BAAK_DB_ROW_ID).maybeSingle();
+    if(error){console.error('[BAAK] Cloud data load failed:',error.message);return false;}
+    if(data&&data.payload){
+      const payload=data.payload;
+      if(!payload.group)payload.group={};
+      if(!payload.group.stats)payload.group.stats={...DEFAULT_DATA.group.stats};
+      else payload.group.stats={...DEFAULT_DATA.group.stats,...payload.group.stats};
+      window.BAAK_REMOTE_DATA=payload;
+      baakLastRemoteUpdatedAt=data.updated_at||null;
+      baakCacheDB(payload);
+    }else if(baakIsAdmin()){
+      const seed=getDB();
+      const {error:seedError}=await baakSupabase.from('baak_site_data').upsert({id:BAAK_DB_ROW_ID,payload:seed,updated_at:new Date().toISOString(),updated_by:baakSession.user.id});
+      if(seedError)console.error('[BAAK] Initial data seed failed:',seedError.message);
+      else window.BAAK_REMOTE_DATA=seed;
+    }else{
+      console.warn('[BAAK] No published cloud content row exists yet; the site is using its built-in initial content. An administrator must publish the first version.');
+    }
+    return true;
+  })();
+  try{return await baakCloudLoadPromise;}
+  catch(error){console.error('[BAAK] Cloud data load failed:',error);return false;}
+  finally{baakLastCloudLoadAt=Date.now();baakCloudLoadPromise=null;}
 }
 async function baakUploadFile(file,folder){
   if(!baakRequireConfig())throw new Error('Supabase is not configured.');
@@ -775,7 +841,7 @@ async function baakQueueEmailWorkflow(type,recordId,extra={}){
     return {ok:false,error:error.message||'Email delivery failed'};
   }
 }
-async function signInBaakAdmin(e){e.preventDefault();const msg=document.getElementById('baakAuthMessage');if(!baakIsSecretAdminRoute()){msg.textContent='Admin sign-in is available only through the private access route.';return;}if(!baakRequireConfig())return;msg.textContent='Signing in…';const {data,error}=await baakSupabase.auth.signInWithPassword({email:document.getElementById('baakAdminEmail').value.trim(),password:document.getElementById('baakAdminPassword').value});if(error){msg.textContent=error.message;return;}baakSession=data.session;if(!baakIsAdmin()){await baakSupabase.auth.signOut();baakSession=null;msg.textContent='This account is not authorized as a BAAK administrator.';return;}await baakLoadCloudData();document.getElementById('supabaseLoginModal').classList.remove('open');document.getElementById('adminModal').classList.add('open');loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();showToast('Administrator authenticated securely.');}
+async function signInBaakAdmin(e){e.preventDefault();const msg=document.getElementById('baakAuthMessage');if(!baakIsSecretAdminRoute()){msg.textContent='Admin sign-in is available only through the private access route.';return;}if(!baakRequireConfig())return;msg.textContent='Signing in…';const {data,error}=await baakSupabase.auth.signInWithPassword({email:document.getElementById('baakAdminEmail').value.trim(),password:document.getElementById('baakAdminPassword').value});if(error){msg.textContent=error.message;return;}baakSession=data.session;if(!baakIsAdmin()){await baakSupabase.auth.signOut();baakSession=null;msg.textContent='This account is not authorized as a BAAK administrator.';return;}await baakLoadCloudData({force:true});document.getElementById('supabaseLoginModal').classList.remove('open');document.getElementById('adminModal').classList.add('open');loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();showToast('Administrator authenticated securely.');}
 function closeSupabaseLogin(){document.getElementById('supabaseLoginModal').classList.remove('open');if(baakIsSecretAdminRoute())location.replace('/');}
 async function baakAdminSignOut(){if(baakSupabase)await baakSupabase.auth.signOut();baakSession=null;document.getElementById('adminModal').classList.remove('open');if(baakIsSecretAdminRoute())location.replace('/');else showToast('Admin signed out.');}
 const PHONE = '+255761484845';
@@ -940,11 +1006,33 @@ function escapeHtml(value) {
   }[char]));
 }
 
+function baakNormalizeDB(payload) {
+  if(!payload || typeof payload !== 'object') return DEFAULT_DATA;
+  if(!payload.subscribers)payload.subscribers=DEFAULT_DATA.subscribers;
+  if(!payload.jobs)payload.jobs=DEFAULT_DATA.jobs;
+  if(!payload.news)payload.news=DEFAULT_DATA.news;
+  if(!payload.reports)payload.reports=DEFAULT_DATA.reports;
+  if(!payload.group)payload.group={...DEFAULT_DATA.group};
+  if(!payload.group.stats)payload.group.stats={...DEFAULT_DATA.group.stats};
+  else payload.group.stats={...DEFAULT_DATA.group.stats,...payload.group.stats};
+  return payload;
+}
+function baakCacheDB(payload, persist=true) {
+  const normalized=baakNormalizeDB(payload);
+  baakLocalDBCache=normalized;
+  baakLocalDBLoaded=true;
+  if(persist){try{localStorage.setItem(BAAK_DB_CACHE_KEY,JSON.stringify(normalized));}catch(e){console.warn('[BAAK] Local cache update skipped:',e);}}
+  return normalized;
+}
 function getDB() {
-  if(window.BAAK_REMOTE_DATA)return window.BAAK_REMOTE_DATA;
-  const local = localStorage.getItem(BAAK_DB_CACHE_KEY);
-  if(!local) return DEFAULT_DATA;
-  try{const parsed=JSON.parse(local);if(!parsed.subscribers)parsed.subscribers=DEFAULT_DATA.subscribers;if(!parsed.jobs)parsed.jobs=DEFAULT_DATA.jobs;if(!parsed.news)parsed.news=DEFAULT_DATA.news;if(!parsed.reports)parsed.reports=DEFAULT_DATA.reports;return parsed;}catch(e){console.error('[BAAK] Invalid local cache',e);return DEFAULT_DATA;}
+  if(window.BAAK_REMOTE_DATA)return baakNormalizeDB(window.BAAK_REMOTE_DATA);
+  if(baakLocalDBLoaded)return baakLocalDBCache||DEFAULT_DATA;
+  baakLocalDBLoaded=true;
+  try{
+    const local=localStorage.getItem(BAAK_DB_CACHE_KEY);
+    baakLocalDBCache=local?baakNormalizeDB(JSON.parse(local)):DEFAULT_DATA;
+  }catch(e){console.warn('[BAAK] Local cache unavailable; using built-in content.',e);baakLocalDBCache=DEFAULT_DATA;}
+  return baakLocalDBCache;
 }
 
 async function baakPersistData(data) {
@@ -977,7 +1065,7 @@ async function saveDB(data) {
     showToast('Cloud save failed: ' + result.error);
     return false;
   }
-  try{localStorage.setItem(BAAK_DB_CACHE_KEY, JSON.stringify(data));}catch(error){console.warn('[BAAK] Local cache update skipped:',error);}
+  baakCacheDB(data);
   return true;
 }
 
@@ -999,7 +1087,7 @@ function render(options = {}) {
   const footer = document.getElementById('site-footer');
   const page = path[0] || 'home';
 
-  document.querySelectorAll('[data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === page));
+  document.querySelectorAll('.main-nav [data-nav]').forEach(a => a.classList.toggle('active', a.dataset.nav === page));
 
   if (page === 'company' && path[1] && db.companies[path[1]]) {
     const comp = db.companies[path[1]];
@@ -1029,8 +1117,15 @@ function render(options = {}) {
   }
   const hero=app.querySelector('.hero');
   if(hero){const bg=getComputedStyle(hero).backgroundImage;const match=bg.match(/url\([\"']?(.*?)[\"']?\)/);if(match&&match[1]){const preload=new Image();preload.fetchPriority='high';preload.decoding='async';preload.src=match[1];}}
-  app.querySelectorAll('img').forEach((img,index)=>{if(index===0&&img.getBoundingClientRect().top<window.innerHeight){img.loading='eager';img.fetchPriority='high';}img.decoding='async';});
-  if(!options.preservePosition)window.scrollTo({ top: 0, behavior: 'smooth' });
+  const pageImages=app.querySelectorAll('img');
+  pageImages.forEach((img,index)=>{
+    img.decoding='async';
+    if(index>0&&!img.hasAttribute('loading'))img.loading='lazy';
+    if(index>0&&!img.hasAttribute('fetchpriority'))img.fetchPriority='low';
+  });
+  if(pageImages.length&&pageImages[0].getAttribute('loading')!=='lazy')pageImages[0].fetchPriority='high';
+  footer.querySelectorAll('img').forEach(img=>{img.loading='lazy';img.decoding='async';img.fetchPriority='low';});
+  if(!options.preservePosition)window.scrollTo({top:0,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
 }
 
 function renderHomePage(db) {
@@ -2090,6 +2185,61 @@ async function baakRetrySubmissionEmail(kind,id){
   showToast(result.ok?'Email workflow completed.':('Email retry failed: '+(result.error||'Unknown error')));
 }
 
+let baakSubmissionRows=[];
+let baakSubmissionView='active';
+
+function baakEscapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+function setSubmissionView(view){
+  baakSubmissionView=view==='hidden'?'hidden':'active';
+  document.getElementById('submissionViewActive')?.classList.toggle('active',baakSubmissionView==='active');
+  document.getElementById('submissionViewHidden')?.classList.toggle('active',baakSubmissionView==='hidden');
+  renderAdminSubmissions();
+}
+
+function renderAdminSubmissions(){
+  const host=document.getElementById('adminSubmissionList');if(!host)return;
+  const active=baakSubmissionRows.filter(row=>!(row.payload||{})._admin_hidden);
+  const hidden=baakSubmissionRows.filter(row=>!!(row.payload||{})._admin_hidden);
+  const activeCount=document.getElementById('submissionActiveCount');
+  const hiddenCount=document.getElementById('submissionHiddenCount');
+  if(activeCount)activeCount.textContent=String(active.length);
+  if(hiddenCount)hiddenCount.textContent=String(hidden.length);
+  const rows=baakSubmissionView==='hidden'?hidden:active;
+  if(!rows.length){host.innerHTML=`<div class="submission-empty">${baakSubmissionView==='hidden'?'No hidden submissions. Items you hide will appear here.':'Your active inbox is clear. New enquiries and applications will appear here.'}</div>`;return;}
+  host.innerHTML=rows.map(row=>{
+    const p=row.payload||{},job=row.kind==='job_application';
+    const title=job?'Job application':(row.kind==='contact_enquiry'?'Contact enquiry':row.kind);
+    const details=[['Name',p.name],['Email',p.email],['Phone',p.phone],[job?'Position':'Company / subject',job?p.job_title:(p.target_company||p.subject)],['Message',p.message]].filter(x=>x[1]);
+    const hidden=!!p._admin_hidden;
+    const safeId=baakEscapeHtml(row.id);
+    const action=hidden?'Unhide':'Hide';
+    const actionIcon=hidden?'↶':'◉';
+    return `<article class="submission-card ${hidden?'is-hidden':''}">
+      <div class="submission-card-top"><strong class="submission-card-title">${baakEscapeHtml(title)}</strong><small class="submission-card-date">${baakEscapeHtml(new Date(row.created_at).toLocaleString())}</small></div>
+      ${details.map(([k,v])=>`<p class="submission-card-detail"><b>${baakEscapeHtml(k)}:</b> ${baakEscapeHtml(v)}</p>`).join('')}
+      ${job?'<p style="font-size:11px;color:var(--muted);margin:8px 0 0">CV is stored privately. Use the secure 24-hour link sent to the BAAK Group notification email.</p>':''}
+      <div class="submission-card-actions"><small>Reference: ${safeId}</small><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="btn outline small" onclick="baakRetrySubmissionEmail('${baakEscapeHtml(row.kind)}','${safeId}')">Retry email notification</button><button type="button" class="submission-hide-btn" onclick="baakSetSubmissionHidden('${safeId}',${!hidden})"><span aria-hidden="true">${actionIcon}</span>${action}</button></div></div>
+    </article>`;
+  }).join('');
+}
+
+async function baakSetSubmissionHidden(id,hide){
+  if(!baakIsAdmin()||!baakSupabase)return showToast('Administrator sign-in is required.');
+  const row=baakSubmissionRows.find(item=>String(item.id)===String(id));
+  if(!row)return showToast('Submission could not be found. Refresh the inbox.');
+  const button=[...document.querySelectorAll('.submission-hide-btn')].find(el=>el.getAttribute('onclick')?.includes(String(id)));
+  if(button){button.disabled=true;button.textContent=hide?'Hiding…':'Restoring…';}
+  try{
+    const nextPayload={...(row.payload||{}),_admin_hidden:!!hide};
+    const {data,error}=await baakSupabase.from('baak_submissions').update({payload:nextPayload}).eq('id',id).select('id,kind,payload,created_at').single();
+    if(error)throw error;
+    baakSubmissionRows=baakSubmissionRows.map(item=>String(item.id)===String(id)?data:item);
+    renderAdminSubmissions();
+    showToast(hide?'Submission moved to Hidden.':'Submission restored to Active.');
+  }catch(error){console.error('[BAAK] Submission visibility update failed:',error);showToast('Could not update submission: '+(error.message||'Please check admin permissions.'));if(button)button.disabled=false;}
+}
+
 async function loadAdminSubmissions(){
   const host=document.getElementById('adminSubmissionList');if(!host)return;
   if(!baakIsAdmin()||!baakSupabase){host.textContent='Administrator sign-in is required.';return;}
@@ -2098,28 +2248,9 @@ async function loadAdminSubmissions(){
     const {data,error}=await baakSupabase.from('baak_submissions')
       .select('id,kind,payload,created_at').order('created_at',{ascending:false}).limit(100);
     if(error)throw error;
-    if(!data||!data.length){host.innerHTML='<p style="font-size:12px;color:var(--muted)">No enquiries or applications received yet.</p>';return;}
-    host.innerHTML=data.map(row=>{
-      const p=row.payload||{};const job=row.kind==='job_application';
-      const title=job?'Job application':(row.kind==='contact_enquiry'?'Contact enquiry':row.kind);
-      const details=[
-        ['Name',p.name],['Email',p.email],['Phone',p.phone],
-        [job?'Position':'Company / subject',job?p.job_title:(p.target_company||p.subject)],
-        ['Message',p.message]
-      ].filter(x=>x[1]);
-      return `<article style="padding:16px;border:1px solid var(--line);background:#fff;margin-bottom:12px;border-left:3px solid var(--gold)">
-        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <strong style="color:var(--navy)">${title}</strong><small style="color:var(--muted)">${new Date(row.created_at).toLocaleString()}</small>
-        </div>
-        ${details.map(([k,v])=>`<p style="font-size:12px;margin:5px 0;color:var(--ink)"><b>${k}:</b> ${String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p>`).join('')}
-        ${job?'<p style="font-size:11px;color:var(--muted);margin:8px 0 0">CV is stored privately. Use the secure 24-hour link sent to the BAAK Group notification email.</p>':''}
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">
-          <small style="color:var(--muted)">Reference: ${row.id}</small>
-          <button type="button" class="btn outline small" onclick="baakRetrySubmissionEmail('${row.kind}','${row.id}')">Retry email notification</button>
-        </div>
-      </article>`;
-    }).join('');
-  }catch(error){console.error('[BAAK] Inbox load failed:',error);host.innerHTML=`<p style="color:#b42318;font-size:12px">Unable to load inbox: ${String(error.message||error)}</p>`;}
+    baakSubmissionRows=data||[];
+    renderAdminSubmissions();
+  }catch(error){console.error('[BAAK] Inbox load failed:',error);host.innerHTML=`<p style="color:#b42318;font-size:12px">Unable to load inbox: ${baakEscapeHtml(error.message||error)}</p>`;}
 }
 
 function showToast(msg) {
@@ -2173,8 +2304,16 @@ if(baakMenuToggle&&baakMainNav){
 
 
 window.addEventListener('hashchange', ()=>{baakCloseMobileMenu();render();baakEnterSecretAdminRoute();});
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&baakSupabase&&baakCloudReady)baakLoadCloudData().then(()=>{if(!baakIsAdmin())baakRenderRemoteUpdate();}).catch(error=>console.warn('[BAAK] Visibility sync failed:',error));});
-window.addEventListener('DOMContentLoaded', async()=>{try{await baakInitSupabase();}catch(error){console.error('[BAAK] Supabase initialization failed:',error);}render();baakEnterSecretAdminRoute();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&baakSupabase&&baakCloudReady)baakLoadCloudData().then(loaded=>{if(loaded&&!baakIsAdmin())baakRenderRemoteUpdate();}).catch(error=>console.warn('[BAAK] Visibility sync failed:',error));});
+window.addEventListener('DOMContentLoaded', async()=>{
+  // Paint cached/default content immediately; network initialization must not block first render.
+  render();
+  baakEnterSecretAdminRoute();
+  try{
+    await baakInitSupabase();
+    if(window.BAAK_REMOTE_DATA&&!baakIsAdmin())baakRenderRemoteUpdate();
+  }catch(error){console.error('[BAAK] Supabase initialization failed:',error);}
+});
 </script>
 </body>
 </html>
