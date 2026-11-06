@@ -1309,9 +1309,12 @@ async function handleNewsletterSubscribe(e) {
   form.dataset.submitting='1';if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Joining…';}
   try{
     if(!baakRequireConfig())throw new Error('Supabase credentials are not configured.');
-    const {data,error}=await baakSupabase.from('baak_subscribers').insert({email}).select('id').single();
-    if(error&&error.code==='23505'){showToast('This email is already subscribed.');return;}
+    // Use a narrowly scoped RPC so public visitors can subscribe without
+    // granting them SELECT access to the private subscriber list.
+    const {data,error}=await baakSupabase.rpc('baak_subscribe_newsletter',{p_email:email});
     if(error)throw error;
+    if(!data||!data.id)throw new Error('Newsletter subscription could not be saved.');
+    if(data.inserted===false){showToast('This email is already subscribed.');return;}
     const mail=await baakQueueEmailWorkflow('newsletter',data.id);
     showToast(mail.ok?'Subscription confirmed.':'Subscription saved; admin email notification is pending.');
     input.value='';
