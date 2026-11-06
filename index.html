@@ -117,9 +117,10 @@ h1 em{font-style:normal;color:var(--gold-hover)}
 .service-action-btn{align-self:flex-start;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:4px;cursor:pointer;transition:.2s}
 .service-action-btn:hover{color:var(--gold-hover)}
 
-.location-btn-wrapper{margin-top:10px;background:#fff;border:1px solid var(--line);padding:6px 8px;text-align:center;transition:all .3s ease}
-.location-btn-wrapper:hover{border-color:var(--gold);box-shadow:0 3px 12px rgba(9,20,48,.07)}
-.location-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:7px 11px;background:var(--navy);color:#fff;font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;transition:all .25s ease}
+.location-btn-wrapper{margin-top:8px;padding:0;background:transparent;border:0;text-align:left;transition:all .25s ease}
+.location-btn-wrapper:hover{border-color:transparent;box-shadow:none}
+.location-link-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:5px 8px;background:transparent;color:var(--navy);border:1px solid rgba(29,44,89,.22);border-radius:3px;font-size:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transition:all .25s ease}
+.location-link-btn:hover{background:var(--navy);border-color:var(--navy);color:#fff}
 .location-link-btn:hover{background:var(--gold);color:#111}
 .location-icon-svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
@@ -191,6 +192,7 @@ body.baak-secret-admin-route .site-header,
 body.baak-secret-admin-route #app,
 body.baak-secret-admin-route #site-footer { display:none !important; }
 body.baak-secret-admin-route { min-height:100vh; background:var(--off-white,#f0f3f4); }
+button:disabled{opacity:.65;cursor:not-allowed;transform:none!important}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -232,10 +234,10 @@ body.baak-secret-admin-route { min-height:100vh; background:var(--off-white,#f0f
     </div>
     <form class="contact-form" onsubmit="handleJobApplication(event)">
       <input type="hidden" id="appJobId">
-      <div class="field"><label>Full Name</label><input type="text" id="applicantName" required placeholder="John Doe"></div>
+      <div class="field"><label>Full Name</label><input type="text" id="applicantName" name="name" required maxlength="120" autocomplete="name" placeholder="John Doe"></div>
       <div class="form-row">
-        <div class="field"><label>Email Address</label><input type="email" id="applicantEmail" required placeholder="john@example.com"></div>
-        <div class="field"><label>Phone Number</label><input type="tel" id="applicantPhone" required placeholder="+255 700 000 000"></div>
+        <div class="field"><label>Email Address</label><input type="email" id="applicantEmail" name="email" required maxlength="254" autocomplete="email" placeholder="john@example.com"></div>
+        <div class="field"><label>Phone Number</label><input type="tel" id="applicantPhone" name="phone" required maxlength="40" autocomplete="tel" placeholder="+255 700 000 000"></div>
       </div>
       <div class="field">
         <label>Upload Resume / CV (PDF or DOCX)</label>
@@ -280,6 +282,7 @@ body.baak-secret-admin-route { min-height:100vh; background:var(--off-white,#f0f
       <button class="admin-tab-btn" onclick="switchAdminTab('reports')">Financial Reports</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('broadcast')">Broadcast</button>
       <button class="admin-tab-btn" onclick="switchAdminTab('jobs')">Careers</button>
+      <button class="admin-tab-btn" onclick="switchAdminTab('submissions')">Enquiries & Applications</button>
     </div>
 
     <!-- TAB 1: Media & Content Studio -->
@@ -484,6 +487,15 @@ body.baak-secret-admin-route { min-height:100vh; background:var(--off-white,#f0f
       </form>
     </div>
 
+    <!-- TAB 6: Private enquiries and recruitment inbox -->
+    <div class="admin-panel" id="tab-submissions">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+        <div><h3 style="margin:0;color:var(--navy)">Enquiries & Applications</h3><p style="font-size:12px;color:var(--muted);margin:4px 0 0">Private submissions received through the website.</p></div>
+        <button class="btn outline small" type="button" onclick="loadAdminSubmissions()">Refresh Inbox</button>
+      </div>
+      <div id="adminSubmissionList"><p style="font-size:12px;color:var(--muted)">Select this tab to load submissions.</p></div>
+    </div>
+
     <!-- TAB 5: Job Openings Management -->
     <div class="admin-panel" id="tab-jobs">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -539,7 +551,7 @@ function baakEnterSecretAdminRoute(){
   if(baakIsAdmin()){
     document.getElementById('supabaseLoginModal').classList.remove('open');
     document.getElementById('adminModal').classList.add('open');
-    loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();
+    loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();
   }else{
     document.getElementById('adminModal').classList.remove('open');
     document.getElementById('supabaseLoginModal').classList.add('open');
@@ -605,14 +617,33 @@ async function baakUploadFile(file,folder){
   const {data}=baakSupabase.storage.from(window.BAAK_STORAGE_BUCKET).getPublicUrl(path);return data.publicUrl;
 }
 async function baakInsertSubmission(kind,payload){
-  if(!baakRequireConfig())throw new Error('Supabase is not configured; submission was not sent.');
-  const {error}=await baakSupabase.from('baak_submissions').insert({kind,payload,source_url:location.href});
-  if(error)throw error;return true;
+  if(!baakRequireConfig())throw new Error('Supabase is not configured; submission was not saved.');
+  const {data,error}=await baakSupabase.from('baak_submissions')
+    .insert({kind,payload,source_url:location.href})
+    .select('id,created_at').single();
+  if(error)throw error;
+  return data;
 }
-async function signInBaakAdmin(e){e.preventDefault();const msg=document.getElementById('baakAuthMessage');if(!baakIsSecretAdminRoute()){msg.textContent='Admin sign-in is available only through the private access route.';return;}if(!baakRequireConfig())return;msg.textContent='Signing in…';const {data,error}=await baakSupabase.auth.signInWithPassword({email:document.getElementById('baakAdminEmail').value.trim(),password:document.getElementById('baakAdminPassword').value});if(error){msg.textContent=error.message;return;}baakSession=data.session;if(!baakIsAdmin()){await baakSupabase.auth.signOut();baakSession=null;msg.textContent='This account is not authorized as a BAAK administrator.';return;}await baakLoadCloudData();document.getElementById('supabaseLoginModal').classList.remove('open');document.getElementById('adminModal').classList.add('open');loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();showToast('Administrator authenticated securely.');}
+
+/* Email is deliberately a second step: a Brevo outage must never undo a saved enquiry/CV. */
+async function baakQueueEmailWorkflow(type,recordId,extra={}){
+  try{
+    if(!baakSupabase || !recordId) return {ok:false,error:'Submission saved; email workflow is not configured.'};
+    const {data,error}=await baakSupabase.functions.invoke('baak-email-workflow',{
+      body:{type,record_id:recordId,...extra}
+    });
+    if(error) throw error;
+    if(data && data.ok===false) throw new Error(data.error||'Email workflow failed.');
+    return {ok:true};
+  }catch(error){
+    console.error('[BAAK] Submission saved, but email notification failed:',error);
+    return {ok:false,error:error.message||'Email delivery failed'};
+  }
+}
+async function signInBaakAdmin(e){e.preventDefault();const msg=document.getElementById('baakAuthMessage');if(!baakIsSecretAdminRoute()){msg.textContent='Admin sign-in is available only through the private access route.';return;}if(!baakRequireConfig())return;msg.textContent='Signing in…';const {data,error}=await baakSupabase.auth.signInWithPassword({email:document.getElementById('baakAdminEmail').value.trim(),password:document.getElementById('baakAdminPassword').value});if(error){msg.textContent=error.message;return;}baakSession=data.session;if(!baakIsAdmin()){await baakSupabase.auth.signOut();baakSession=null;msg.textContent='This account is not authorized as a BAAK administrator.';return;}await baakLoadCloudData();document.getElementById('supabaseLoginModal').classList.remove('open');document.getElementById('adminModal').classList.add('open');loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();showToast('Administrator authenticated securely.');}
 function closeSupabaseLogin(){document.getElementById('supabaseLoginModal').classList.remove('open');if(baakIsSecretAdminRoute())location.replace('/');}
 async function baakAdminSignOut(){if(baakSupabase)await baakSupabase.auth.signOut();baakSession=null;document.getElementById('adminModal').classList.remove('open');if(baakIsSecretAdminRoute())location.replace('/');else showToast('Admin signed out.');}
-const PHONE = '+255 673 777 749';
+const PHONE = '+255761484845';
 const ADDRESS = 'BHM PLAZA, Goba Road, Dar es Salaam, Tanzania';
 const MAP_URL = 'https://maps.app.goo.gl/37nD8bGsxjWUqHqS9';
 const LOCATION_PIN_SVG = `<svg class="location-icon-svg" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
@@ -655,7 +686,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1541976590-713941681591?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 749', email: 'builders@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'logistics': {
       slug: 'logistics', name: 'BAAK LOGISTICS LTD', short: 'LOGISTICS', industry: 'Transport, Logistics & Supply Chain',
@@ -672,7 +703,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 750', email: 'logistics@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'intertrade': {
       slug: 'intertrade', name: 'BAAK INTERTRADE LTD', short: 'INTERTRADE', industry: 'Global Trading & Procurement',
@@ -689,7 +720,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1601598851547-4302969d0614?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 751', email: 'intertrade@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'motors': {
       slug: 'motors', name: 'BAAK MOTORS LTD', short: 'MOTORS', industry: 'Automotive & Fleet Management',
@@ -706,7 +737,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 752', email: 'motors@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'cosmetics': {
       slug: 'cosmetics', name: 'BAAK COSMETICS LTD', short: 'COSMETICS', industry: 'Beauty & Personal Care',
@@ -723,7 +754,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 753', email: 'cosmetics@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'barbershop': {
       slug: 'barbershop', name: 'BAAK BARBERSHOP', short: 'BARBERSHOP', industry: 'Executive Grooming & Spa',
@@ -740,7 +771,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 754', email: 'barbershop@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'home-furniture': {
       slug: 'home-furniture', name: 'BAAK HOME & FURNITURES', short: 'FURNITURE', industry: 'Interior Design & Manufacturing',
@@ -757,7 +788,7 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1400&q=85',
-      phone: '+255 673 777 755', email: 'furniture@baakgroup.com'
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     }
   }
 };
@@ -1127,7 +1158,7 @@ function renderContactPage(db) {
           <h2>Group Office</h2>
           <div class="contact-line"><b>Address:</b> <a href="${MAP_URL}" target="_blank" style="color:var(--navy);font-weight:700;display:inline-flex;align-items:center;gap:6px">${ADDRESS} ${LOCATION_PIN_SVG}</a></div>
           <div class="contact-line"><b>Phone:</b> <a href="tel:${PHONE}" style="color:var(--navy);font-weight:700">${PHONE}</a></div>
-          <div class="contact-line"><b>Email:</b> <a href="mailto:info@baakgroup.com" style="color:var(--navy);font-weight:700">info@baakgroup.com</a></div>
+          <div class="contact-line"><b>Email:</b> <a href="mailto:baakgroupafrica@gmail.com" style="color:var(--navy);font-weight:700">baakgroupafrica@gmail.com</a></div>
           
           <div class="location-btn-wrapper">
             <a href="${MAP_URL}" target="_blank" class="location-link-btn">
@@ -1139,12 +1170,13 @@ function renderContactPage(db) {
           <h2>Send Message</h2>
           <form class="contact-form" onsubmit="handleFormSubmit(event, 'BAAK Group HQ')">
             <div class="form-row">
-              <div class="field"><label>Your Name</label><input type="text" required placeholder="Full Name"></div>
-              <div class="field"><label>Your Email</label><input type="email" required placeholder="name@example.com"></div>
+              <div class="field"><label>Your Name</label><input type="text" name="name" id="contactName" required maxlength="120" autocomplete="name" placeholder="Full Name"></div>
+              <div class="field"><label>Your Email</label><input type="email" name="email" id="contactEmail" required maxlength="254" autocomplete="email" placeholder="name@example.com"></div>
             </div>
+            <div class="field"><label>Phone Number</label><input type="tel" name="phone" id="contactPhone" required maxlength="40" autocomplete="tel" placeholder="+255 ..."></div>
             <div class="field">
               <label>Target Company</label>
-              <select>
+              <select name="target_company" id="contactTargetCompany">
                 <option>BAAK GROUP (Head Office)</option>
                 <option>BAAK Builders Ltd</option>
                 <option>BAAK Logistics Ltd</option>
@@ -1155,8 +1187,8 @@ function renderContactPage(db) {
                 <option>BAAK Home & Furnitures</option>
               </select>
             </div>
-            <div class="field"><label>Subject</label><input type="text" required placeholder="Subject"></div>
-            <div class="field"><label>Message</label><textarea required placeholder="Write your message..."></textarea></div>
+            <div class="field"><label>Subject</label><input type="text" name="subject" required maxlength="180" placeholder="Subject"></div>
+            <div class="field"><label>Message</label><textarea name="message" required maxlength="5000" placeholder="Write your message..."></textarea></div>
             <button class="btn gold" type="submit">Send Message </button>
           </form>
         </div>
@@ -1204,7 +1236,7 @@ function renderGlobalFooter(db) {
           <h4>Head Office</h4>
           <p><a href="${MAP_URL}" target="_blank" style="color:#c0c9d8;display:inline-flex;align-items:center;gap:6px">${ADDRESS} ${LOCATION_PIN_SVG}</a></p>
           <p><a href="tel:${PHONE}" style="color:#c0c9d8">${PHONE}</a></p>
-          <p><a href="mailto:info@baakgroup.com" style="color:#c0c9d8">info@baakgroup.com</a></p>
+          <p><a href="mailto:baakgroupafrica@gmail.com" style="color:#c0c9d8">baakgroupafrica@gmail.com</a></p>
         </div>
       </div>
       <div class="footer-bottom">
@@ -1272,9 +1304,19 @@ function renderCompanyFooter(c) {
 }
 
 async function handleNewsletterSubscribe(e) {
-  e.preventDefault();const input=e.target.querySelector('input[type="email"]');const email=input.value.trim().toLowerCase();
-  try{if(!baakRequireConfig())throw new Error('Supabase credentials are not configured.');const {error}=await baakSupabase.from('baak_subscribers').insert({email});if(error&&error.code!=='23505')throw error;showToast('Subscription received successfully.');input.value='';}
-  catch(error){showToast('Subscription failed: '+error.message);console.error(error);}
+  e.preventDefault();const form=e.target;const input=form.querySelector('input[type="email"]');const email=input.value.trim().toLowerCase();
+  const button=form.querySelector('button[type="submit"]');if(form.dataset.submitting==='1')return;
+  form.dataset.submitting='1';if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Joining…';}
+  try{
+    if(!baakRequireConfig())throw new Error('Supabase credentials are not configured.');
+    const {data,error}=await baakSupabase.from('baak_subscribers').insert({email}).select('id').single();
+    if(error&&error.code==='23505'){showToast('This email is already subscribed.');return;}
+    if(error)throw error;
+    const mail=await baakQueueEmailWorkflow('newsletter',data.id);
+    showToast(mail.ok?'Subscription confirmed.':'Subscription saved; admin email notification is pending.');
+    input.value='';
+  }catch(error){showToast('Subscription failed: '+error.message);console.error('[BAAK] Newsletter failed:',error);}
+  finally{form.dataset.submitting='0';if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Subscribe';}}
 }
 
 function switchAdminTab(tabName) {
@@ -1292,13 +1334,15 @@ function switchAdminTab(tabName) {
     renderAdminNewsList();
   } else if (tabName === 'reports') {
     renderAdminReportList();
+  } else if (tabName === 'submissions') {
+    loadAdminSubmissions();
   }
 }
 
 function toggleAdminModal(show) {
   if(show && !baakIsAdmin()){document.getElementById('supabaseLoginModal').classList.add('open');return;}
   document.getElementById('adminModal').classList.toggle('open', show);
-  if(show) {loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();}
+  if(show) {loadAdminCompanyData();renderAdminJobsList();renderAdminNewsList();renderAdminReportList();loadAdminSubmissions();}
 }
 
 function loadAdminCompanyData() {
@@ -1687,10 +1731,78 @@ function toggleJobModal(show) {
 }
 
 async function handleJobApplication(e) {
-  e.preventDefault();const form=e.target;const name=document.getElementById('applicantName').value;const cv=document.getElementById('applicantCv').files[0];
-  try{let cvUrl=null;if(cv){if(!baakConfigured())throw new Error('Supabase credentials are not configured; CV was not sent.');if(!baakSupabase)throw new Error('Supabase connection is not ready.');const {data,error}=await baakSupabase.storage.from('baak-private-files').upload('applications/'+Date.now()+'-'+cv.name.replace(/[^a-zA-Z0-9._-]/g,'-'),cv,{upsert:false,contentType:cv.type});if(error)throw error;cvUrl=data.path;}
-    const payload={job_id:document.getElementById('appJobId').value,name,email:document.getElementById('applicantEmail').value,phone:document.getElementById('applicantPhone').value,message:document.getElementById('applicantMessage').value,cv_url:cvUrl};await baakInsertSubmission('job_application',payload);showToast(`Application received successfully, ${name}.`);toggleJobModal(false);form.reset();
-  }catch(error){showToast('Application failed: '+error.message);console.error(error);}
+  e.preventDefault();const form=e.target;
+  if(form.dataset.submitting==='1')return;
+  const name=document.getElementById('applicantName').value.trim();
+  const email=document.getElementById('applicantEmail').value.trim().toLowerCase();
+  const phone=document.getElementById('applicantPhone').value.trim();
+  const cv=document.getElementById('applicantCv').files[0];
+  const button=form.querySelector('button[type="submit"]');
+  form.dataset.submitting='1';if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Submitting…';}
+  try{
+    if(!cv)throw new Error('Please attach your CV.');
+    const ext=(cv.name.split('.').pop()||'').toLowerCase();
+    if(!['pdf','doc','docx'].includes(ext))throw new Error('CV must be PDF, DOC or DOCX.');
+    if(cv.size>10*1024*1024)throw new Error('CV must not exceed 10 MB.');
+    if(!baakRequireConfig())throw new Error('Supabase is not configured.');
+    if(!baakSupabase)throw new Error('Supabase connection is not ready.');
+    const safeName=cv.name.normalize('NFKD').replace(/[^a-zA-Z0-9._-]+/g,'-').slice(-90);
+    const cvPath='applications/'+crypto.randomUUID()+'-'+safeName;
+    const {error:uploadError}=await baakSupabase.storage.from('baak-private-files')
+      .upload(cvPath,cv,{upsert:false,contentType:cv.type||'application/octet-stream'});
+    if(uploadError)throw uploadError;
+    const jobId=document.getElementById('appJobId').value;
+    const db=getDB();const job=(db.jobs||[]).find(j=>String(j.id)===String(jobId));
+    const payload={
+      job_id:jobId,job_title:job?.title||'General application',
+      name,email,phone,
+      message:document.getElementById('applicantMessage').value.trim(),
+      cv_path:cvPath,submitted_at:new Date().toISOString()
+    };
+    const saved=await baakInsertSubmission('job_application',payload);
+    const mail=await baakQueueEmailWorkflow('job_application',saved.id);
+    showToast(mail.ok?'Application received. A confirmation email has been sent.':'Application safely received. Email notification is pending.');
+    toggleJobModal(false);form.reset();
+  }catch(error){showToast('Application could not be submitted: '+error.message);console.error('[BAAK] Job application failed:',error);}
+  finally{form.dataset.submitting='0';if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Submit Application';}}
+}
+
+async function baakRetrySubmissionEmail(kind,id){
+  if(!baakIsAdmin())return showToast('Administrator sign-in is required.');
+  const result=await baakQueueEmailWorkflow(kind,id);
+  showToast(result.ok?'Email workflow completed.':('Email retry failed: '+(result.error||'Unknown error')));
+}
+
+async function loadAdminSubmissions(){
+  const host=document.getElementById('adminSubmissionList');if(!host)return;
+  if(!baakIsAdmin()||!baakSupabase){host.textContent='Administrator sign-in is required.';return;}
+  host.innerHTML='<p style="font-size:12px;color:var(--muted)">Loading secure inbox…</p>';
+  try{
+    const {data,error}=await baakSupabase.from('baak_submissions')
+      .select('id,kind,payload,created_at').order('created_at',{ascending:false}).limit(100);
+    if(error)throw error;
+    if(!data||!data.length){host.innerHTML='<p style="font-size:12px;color:var(--muted)">No enquiries or applications received yet.</p>';return;}
+    host.innerHTML=data.map(row=>{
+      const p=row.payload||{};const job=row.kind==='job_application';
+      const title=job?'Job application':(row.kind==='contact_enquiry'?'Contact enquiry':row.kind);
+      const details=[
+        ['Name',p.name],['Email',p.email],['Phone',p.phone],
+        [job?'Position':'Company / subject',job?p.job_title:(p.target_company||p.subject)],
+        ['Message',p.message]
+      ].filter(x=>x[1]);
+      return `<article style="padding:16px;border:1px solid var(--line);background:#fff;margin-bottom:12px;border-left:3px solid var(--gold)">
+        <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <strong style="color:var(--navy)">${title}</strong><small style="color:var(--muted)">${new Date(row.created_at).toLocaleString()}</small>
+        </div>
+        ${details.map(([k,v])=>`<p style="font-size:12px;margin:5px 0;color:var(--ink)"><b>${k}:</b> ${String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</p>`).join('')}
+        ${job?'<p style="font-size:11px;color:var(--muted);margin:8px 0 0">CV is stored privately. Use the secure 24-hour link sent to the BAAK Group notification email.</p>':''}
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <small style="color:var(--muted)">Reference: ${row.id}</small>
+          <button type="button" class="btn outline small" onclick="baakRetrySubmissionEmail('${row.kind}','${row.id}')">Retry email notification</button>
+        </div>
+      </article>`;
+    }).join('');
+  }catch(error){console.error('[BAAK] Inbox load failed:',error);host.innerHTML=`<p style="color:#b42318;font-size:12px">Unable to load inbox: ${String(error.message||error)}</p>`;}
 }
 
 function showToast(msg) {
@@ -1700,7 +1812,23 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-async function handleFormSubmit(e,target){e.preventDefault();const form=e.target;const fields={};new FormData(form).forEach((v,k)=>{if(typeof v==='string')fields[k]=v;});form.querySelectorAll('input,textarea,select').forEach((el,i)=>{if(el.type!=='file'&&el.value)fields[el.name||el.id||('field_'+i)]=el.value;});try{await baakInsertSubmission('contact_enquiry',{target,fields});showToast(`Enquiry to ${target} received successfully.`);form.reset();}catch(error){showToast('Enquiry failed: '+error.message);console.error(error);}}
+async function handleFormSubmit(e,target){
+  e.preventDefault();const form=e.target;const button=form.querySelector('button[type="submit"]');
+  if(form.dataset.submitting==='1')return;
+  form.dataset.submitting='1';if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Submitting…';}
+  const fields={};new FormData(form).forEach((v,k)=>{if(typeof v==='string')fields[k]=v.trim();});
+  try{
+    const saved=await baakInsertSubmission('contact_enquiry',{
+      target, name:fields.name||'', email:fields.email||'', phone:fields.phone||'',
+      target_company:fields.target_company||target, subject:fields.subject||'',
+      message:fields.message||'', submitted_at:new Date().toISOString(), fields
+    });
+    const mail=await baakQueueEmailWorkflow('contact_enquiry',saved.id);
+    showToast(mail.ok?'Enquiry received. A confirmation email has been sent.':'Enquiry safely received. Email notification is pending; please try again later.');
+    form.reset();
+  }catch(error){showToast('Enquiry could not be saved: '+error.message);console.error('[BAAK] Contact submission failed:',error);}
+  finally{form.dataset.submitting='0';if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Send Message';}}
+}
 
 const baakMenuToggle=document.querySelector('.menu-toggle');
 const baakMainNav=document.querySelector('.main-nav');
