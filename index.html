@@ -407,6 +407,27 @@ input,textarea,select{max-width:100%;min-width:0}
         <div class="field"><label for="admGroupAddress">Head Office Address</label><input id="admGroupAddress" type="text" maxlength="240" placeholder="Office address"></div>
         <div class="field"><label for="admGroupMapUrl">Google Maps URL</label><input id="admGroupMapUrl" type="url" maxlength="1000" placeholder="https://maps.google.com/..."></div>
       </div>
+      <div class="stats-admin-heading" style="margin-top:24px">
+        <div class="eyebrow">GROUP-WIDE FOOTER SETTINGS</div>
+        <h3>Copyright Year Display</h3>
+        <p>Set one copyright year or a year range. This shared setting is used by the BAAK Group footer and every subsidiary footer.</p>
+      </div>
+      <div class="stats-admin-grid">
+        <div class="field">
+          <label for="admCopyrightYear">Copyright year / range</label>
+          <input id="admCopyrightYear" type="text" maxlength="11" inputmode="numeric" autocomplete="off" placeholder="2026 or 2000-2000" aria-describedby="copyrightYearHelp">
+          <small id="copyrightYearHelp">Enter one four-digit year (2026) or a range (2000-2000).</small>
+        </div>
+        <div class="field">
+          <label>Footer preview</label>
+          <div id="previewCopyrightYear" style="min-height:44px;display:flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--white);font-weight:800;color:var(--navy)">© 2026</div>
+        </div>
+      </div>
+      <div class="stats-admin-actions">
+        <span id="copyrightSaveStatus" role="status">Copyright changes are not published until you save.</span>
+        <button type="button" class="btn gold" onclick="saveAdminCopyrightYear()">Save & Publish Copyright</button>
+      </div>
+
       <div class="stats-admin-preview">
         <div class="stats-admin-preview-label">LIVE PREVIEW</div>
         <div class="stats-admin-preview-grid">
@@ -1670,6 +1691,11 @@ function renderContactPage(db) {
   `;
 }
 
+function baakCopyrightYear(db=getDB()){
+  const configured=String(db?.group?.copyrightYear??'').trim();
+  return configured || String(new Date().getFullYear());
+}
+
 function renderGlobalFooter(db) {
   const comps = Object.values(db.companies);
   return `
@@ -1713,7 +1739,7 @@ function renderGlobalFooter(db) {
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© ${new Date().getFullYear()} BAAK GROUP OF COMPANIES. All rights reserved.</span>
+        <span>© ${escapeHtml(baakCopyrightYear(db))} BAAK GROUP OF COMPANIES. All rights reserved.</span>
         <span>BEYOND BOUNDARIES • TANZANIA</span>
       </div>
     </div>
@@ -1770,7 +1796,7 @@ function renderCompanyFooter(c) {
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© ${new Date().getFullYear()} ${c.name} • Member of BAAK Group.</span>
+        <span>© ${escapeHtml(baakCopyrightYear(getDB()))} ${c.name} • Member of BAAK Group.</span>
         <span><a href="mailto:${escapeHtml(baakCompanyEmail(c))}">${escapeHtml(baakCompanyEmail(c))}</a></span>
       </div>
     </div>
@@ -1834,7 +1860,8 @@ function loadAdminStats() {
     admStatSubsidiaries: stats.subsidiaryCompanies ?? '07',
     admStatProjects: stats.completedProjects ?? '150+',
     admStatLocation: stats.location ?? 'TZ',
-    admStatLocationLabel: stats.locationLabel ?? 'Rooted in Tanzania'
+    admStatLocationLabel: stats.locationLabel ?? 'Rooted in Tanzania',
+    admCopyrightYear: baakCopyrightYear(getDB())
   };
   Object.entries(values).forEach(([id,value]) => {
     const field = document.getElementById(id);
@@ -1858,10 +1885,54 @@ function updateAdminStatsPreview() {
     const preview = document.getElementById(previewId);
     if(input && preview) preview.textContent = input.value.trim() || '—';
   });
+  const copyrightInput=document.getElementById('admCopyrightYear');
+  const copyrightPreview=document.getElementById('previewCopyrightYear');
+  if(copyrightInput&&copyrightPreview)copyrightPreview.textContent='© '+(copyrightInput.value.trim()||String(new Date().getFullYear()));
 }
 document.addEventListener('input', event => {
-  if(event.target && event.target.matches('#stats-admin-grid input, .stats-admin-grid input')) updateAdminStatsPreview();
+  if(event.target && event.target.matches('#stats-admin-grid input, .stats-admin-grid input, #admCopyrightYear')) updateAdminStatsPreview();
 });
+async function saveAdminCopyrightYear() {
+  if(!baakIsAdmin() || !baakSupabase) {
+    showToast('Sign in as an administrator before publishing.');
+    return;
+  }
+  const field=document.getElementById('admCopyrightYear');
+  const raw=String(field?.value||'').trim();
+  const match=raw.match(/^(\d{4})(?:\s*-\s*(\d{4}))?$/);
+  if(!match) {
+    showToast('Enter one four-digit year (2026) or a valid range (2000-2000).');
+    field?.focus();
+    return;
+  }
+  const start=Number(match[1]),end=match[2]?Number(match[2]):null;
+  if(end!==null&&end<start) {
+    showToast('The ending year must be the same as or later than the starting year.');
+    field?.focus();
+    return;
+  }
+  const value=end===null?String(start):`${start}-${end}`;
+  const db=getDB();
+  db.group=db.group||{};
+  db.group.copyrightYear=value;
+  const status=document.getElementById('copyrightSaveStatus');
+  const button=document.querySelector('#tab-stats button[onclick="saveAdminCopyrightYear()"]');
+  if(status)status.textContent='Publishing copyright setting…';
+  if(button)button.disabled=true;
+  const saved=await saveDB(db);
+  if(button)button.disabled=false;
+  if(!saved) {
+    if(status)status.textContent='Cloud save failed. The published copyright has not changed.';
+    return;
+  }
+  if(field)field.value=value;
+  updateAdminStatsPreview();
+  if(status)status.textContent='Published successfully. All open website pages will receive the update in real time.';
+  showToast('Copyright year published and synced to all group and subsidiary footers.');
+  render({preservePosition:true});
+  loadAdminStats();
+}
+
 async function saveAdminStats() {
   if(!baakIsAdmin() || !baakSupabase) {
     showToast('Sign in as an administrator before publishing.');
