@@ -321,6 +321,12 @@ input,textarea,select{max-width:100%;min-width:0}
 .owner-admin-panel{margin-top:32px;padding:22px;border:1px solid var(--line);background:var(--surface,rgba(255,255,255,.72))}.owner-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}.owner-admin-bio{grid-column:1/-1}.owner-admin-grid textarea,.owner-admin-grid input{width:100%;font:inherit}.owner-admin-preview-wrap{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:18px;border:1px solid var(--line);background:var(--surface-2,rgba(128,128,128,.06))}.owner-admin-preview{width:112px;height:112px;border-radius:50%;overflow:hidden;border:4px solid var(--gold);background:var(--navy);display:grid;place-items:center;color:white;font-size:28px;font-weight:800}.owner-admin-preview img{width:100%;height:100%;object-fit:cover}.owner-admin-preview-name{font-size:13px;font-weight:850;color:var(--ink)}.owner-admin-preview-role{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .owner-cropper{grid-column:1/-1;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,rgba(128,128,128,.06));display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.8fr);gap:20px;align-items:center}.owner-cropper[hidden]{display:none!important}.owner-crop-stage{position:relative;width:min(100%,280px);aspect-ratio:1;margin:0 auto;overflow:hidden;border-radius:12px;background:#101827;touch-action:none;cursor:grab;user-select:none}.owner-crop-stage:active{cursor:grabbing}.owner-crop-stage img{position:absolute;max-width:none;max-height:none;pointer-events:none;user-select:none;will-change:transform}.owner-crop-ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--gold);box-shadow:0 0 0 999px rgba(5,12,25,.43);pointer-events:none}.owner-crop-stage:after{content:"DRAG TO REPOSITION";position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.13em;color:#fff;text-shadow:0 1px 5px #000;pointer-events:none}.owner-crop-controls{display:flex;flex-direction:column;gap:12px}.owner-crop-controls label{font-size:11px;font-weight:800;color:var(--ink)}.owner-crop-controls input[type=range]{width:100%;accent-color:var(--gold)}.owner-crop-actions{display:flex;flex-wrap:wrap;gap:9px}.owner-crop-help{font-size:11px;color:var(--muted);line-height:1.65}.owner-admin-preview{width:128px;height:128px;border-width:5px;box-shadow:0 8px 24px rgba(12,25,55,.14)}
 @media(max-width:700px){.owner-profile-wrap{grid-template-columns:1fr;gap:24px;padding:26px 20px;text-align:center}.owner-profile-portrait{grid-row:1;width:174px;height:174px}.owner-admin-grid{grid-template-columns:1fr}.owner-admin-bio,.owner-admin-preview-wrap{grid-column:1}.owner-admin-panel{padding:16px}.brand-group{font-size:9px;padding-left:7px}.brand-group small{font-size:6.5px}.brand-group .brand-motto{font-size:5.5px}}
+
+/* BAAK image loading: stable placeholders, async decode and a restrained reveal. */
+#app img:not(.splash-logo){background-color:var(--surface-2,#eef1f6);transition:opacity .24s ease;}
+#app img.baak-image-pending{opacity:.08;}
+#app img.baak-image-ready{opacity:1;}
+@media(prefers-reduced-motion:reduce){#app img:not(.splash-logo){transition:none!important}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 
@@ -3476,5 +3482,84 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(appReady)dismiss();
 })();
 </script>
+
+<script id="baak-image-pipeline-v1">
+/*
+ * Smooth image delivery without changing content or removing any feature:
+ * - prioritize the active page hero, defer off-screen editorial/card imagery
+ * - decode asynchronously before revealing loaded image pixels
+ * - observe newly-rendered images and URL changes from admin/live updates
+ * - warm the active hero background at high fetch priority
+ */
+(()=>{
+  const isAdminPreview=img=>!!img.closest('#adminModal')||['adminLivePreview','ownerCropImage','admOwnerImagePreview','promoImagePreview'].includes(img.id);
+  const isHero=img=>!!img.closest('.company-hero');
+  const markReady=img=>{
+    if(!img||!img.isConnected)return;
+    img.classList.remove('baak-image-pending');
+    img.classList.add('baak-image-ready');
+  };
+  const decodeAndReveal=img=>{
+    if(!img||!img.isConnected)return;
+    if(typeof img.decode==='function'){
+      img.decode().then(()=>markReady(img)).catch(()=>{
+        if(img.complete)markReady(img);
+      });
+    }else if(img.complete){markReady(img);}
+  };
+  const prepare=img=>{
+    if(!(img instanceof HTMLImageElement)||!img.getAttribute('src'))return;
+    const hero=isHero(img);
+    if(!isAdminPreview(img)){
+      img.decoding='async';
+      if(hero){img.loading='eager';img.fetchPriority='high';}
+      else if(!img.closest('.site-header,.site-footer,.subsidiary-footer')){
+        img.loading='lazy';img.fetchPriority='low';
+      }
+    }
+    if(img.complete&&img.naturalWidth>0){decodeAndReveal(img);return;}
+    img.classList.add('baak-image-pending');
+  };
+  document.addEventListener('load',event=>{
+    const img=event.target;
+    if(img instanceof HTMLImageElement)decodeAndReveal(img);
+  },true);
+  document.addEventListener('error',event=>{
+    const img=event.target;
+    if(img instanceof HTMLImageElement){img.classList.remove('baak-image-pending');img.classList.add('baak-image-ready');}
+  },true);
+  const scan=root=>{
+    if(!root)return;
+    if(root instanceof HTMLImageElement)prepare(root);
+    if(root.querySelectorAll)root.querySelectorAll('img').forEach(prepare);
+  };
+  const warmHeroBackground=()=>{
+    document.querySelectorAll('#app .hero').forEach(hero=>{
+      const bg=getComputedStyle(hero).backgroundImage;
+      const match=bg&&bg.match(/url\(["']?(.*?)["']?\)/i);
+      if(!match||!match[1]||hero.dataset.baakHeroWarmed===match[1])return;
+      hero.dataset.baakHeroWarmed=match[1];
+      const preload=new Image();
+      preload.decoding='async';
+      preload.fetchPriority='high';
+      preload.src=match[1];
+    });
+  };
+  const start=()=>{
+    scan(document);
+    if('MutationObserver' in window){
+      const observer=new MutationObserver(records=>records.forEach(record=>{
+        if(record.type==='attributes'&&record.target instanceof HTMLImageElement)prepare(record.target);
+        record.addedNodes&&record.addedNodes.forEach(node=>{if(node.nodeType===1)scan(node);});
+      }));
+      observer.observe(document.getElementById('app')||document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});
+    }
+    warmHeroBackground();
+    window.addEventListener('hashchange',()=>requestAnimationFrame(warmHeroBackground),{passive:true});
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
+
 </body>
 </html>
