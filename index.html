@@ -2317,8 +2317,31 @@ function ownerCropClamp(){const size=280;ownerCropState.x=Math.min(0,Math.max(si
 function ownerCropRender(){const image=document.getElementById('ownerCropImage'),stage=document.getElementById('ownerCropStage');if(!image||!stage||!ownerCropState.image)return;const scale=stage.getBoundingClientRect().width/280;image.style.width=(ownerCropState.w*scale)+'px';image.style.height=(ownerCropState.h*scale)+'px';image.style.left=(ownerCropState.x*scale)+'px';image.style.top=(ownerCropState.y*scale)+'px';}
 function ownerCropLoadImage(source){return new Promise((resolve,reject)=>{const image=new Image();if(/^https?:/i.test(source))image.crossOrigin='anonymous';image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Image could not be loaded. Check the image URL or choose another photo.'));image.src=source;});}
 async function ownerCropOpen(source){
-  try{ownerCropSetStatus('Loading photo…');const image=await ownerCropLoadImage(source);ownerCropState.image=image;ownerCropState.source=source;const scale=Math.max(280/image.naturalWidth,280/image.naturalHeight);ownerCropState.baseW=image.naturalWidth*scale;ownerCropState.baseH=image.naturalHeight*scale;ownerCropState.zoom=1;ownerCropState.w=ownerCropState.baseW;ownerCropState.h=ownerCropState.baseH;ownerCropState.x=(280-ownerCropState.w)/2;ownerCropState.y=(280-ownerCropState.h)/2;const zoom=document.getElementById('ownerCropZoom');if(zoom)zoom.value='1';const stage=document.getElementById('ownerCropper');if(stage)stage.hidden=false;ownerCropRender();ownerCropSetStatus('Ready. Drag to position, then apply your crop.');}
-  catch(error){ownerCropSetStatus(error.message);showToast(error.message);}
+  try{
+    ownerCropSetStatus('Loading photo…');
+    const image=await ownerCropLoadImage(source);
+    ownerCropState.image=image;
+    ownerCropState.source=source;
+    const scale=Math.max(280/image.naturalWidth,280/image.naturalHeight);
+    ownerCropState.baseW=image.naturalWidth*scale;
+    ownerCropState.baseH=image.naturalHeight*scale;
+    ownerCropState.zoom=1;
+    ownerCropState.w=ownerCropState.baseW;
+    ownerCropState.h=ownerCropState.baseH;
+    ownerCropState.x=(280-ownerCropState.w)/2;
+    ownerCropState.y=(280-ownerCropState.h)/2;
+    const zoom=document.getElementById('ownerCropZoom');
+    if(zoom)zoom.value='1';
+    const previewImage=document.getElementById('ownerCropImage');
+    if(!previewImage)throw new Error('The crop preview is unavailable. Please reload the admin page.');
+    previewImage.onload=()=>ownerCropRender();
+    previewImage.onerror=()=>ownerCropSetStatus('The photo loaded but could not be displayed in the crop preview. Please choose another image.');
+    previewImage.src=source;
+    const stage=document.getElementById('ownerCropper');
+    if(stage)stage.hidden=false;
+    ownerCropRender();
+    ownerCropSetStatus('Ready. Drag to position, then apply your crop.');
+  }catch(error){ownerCropSetStatus(error.message);showToast(error.message);}
 }
 function handleOwnerProfileUpload(input){const file=input.files&&input.files[0];if(!file)return;if(!/^image\/(jpeg|png|webp|gif)$/.test(file.type)){showToast('Please choose a JPG, PNG, WEBP or GIF image.');input.value='';return;}if(file.size>12*1024*1024){showToast('Profile photo must be 12 MB or smaller.');input.value='';return;}if(ownerCropState.objectUrl)URL.revokeObjectURL(ownerCropState.objectUrl);ownerCropState.objectUrl=URL.createObjectURL(file);ownerCropOpen(ownerCropState.objectUrl);}
 function handleOwnerProfileUrl(value){const url=String(value||'').trim();if(!url)return;if(!baakSafeMediaUrl(url)){showToast('Please enter a valid HTTPS image URL.');return;}ownerCropOpen(url);}
@@ -2326,7 +2349,7 @@ function updateOwnerCropZoom(value){if(!ownerCropState.image)return;const next=M
 function resetOwnerProfileCrop(){if(!ownerCropState.image)return;ownerCropState.zoom=1;ownerCropState.w=ownerCropState.baseW;ownerCropState.h=ownerCropState.baseH;ownerCropState.x=(280-ownerCropState.w)/2;ownerCropState.y=(280-ownerCropState.h)/2;const zoom=document.getElementById('ownerCropZoom');if(zoom)zoom.value='1';ownerCropRender();}
 async function applyOwnerProfileCrop(){
   if(!ownerCropState.image)return;const button=document.getElementById('ownerCropApply');if(button)button.disabled=true;
-  try{const canvas=document.createElement('canvas');canvas.width=720;canvas.height=720;const ctx=canvas.getContext('2d',{alpha:false});const ratio=720/280;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,720,720);ctx.drawImage(ownerCropState.image,ownerCropState.x*ratio,ownerCropState.y*ratio,ownerCropState.w*ratio,ownerCropState.h*ratio);const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not create the cropped image.')),'image/jpeg',.92));const croppedFile=new File([blob],'baak-owner-profile.jpg',{type:'image/jpeg'});ownerCropSetStatus('Uploading your selected crop securely…');showToast('Uploading selected owner portrait…');const url=await baakUploadFile(croppedFile,'admin-media');const field=document.getElementById('admOwnerImageUrl');if(field)field.value=url;const preview=document.getElementById('admOwnerImagePreview'),fallback=document.getElementById('admOwnerImageFallback');if(preview){preview.src=url;preview.hidden=false;}if(fallback)fallback.style.display='none';const cropper=document.getElementById('ownerCropper');if(cropper)cropper.hidden=true;ownerCropSetStatus('Crop uploaded. Save & Publish Owner Profile to publish it.');showToast('Cropped owner portrait uploaded. Save & Publish Owner Profile to make it live.');
+  try{const canvas=document.createElement('canvas');canvas.width=720;canvas.height=720;const ctx=canvas.getContext('2d',{alpha:false});const ratio=720/280;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,720,720);ctx.drawImage(ownerCropState.image,0,0,ownerCropState.image.naturalWidth,ownerCropState.image.naturalHeight,ownerCropState.x*ratio,ownerCropState.y*ratio,ownerCropState.w*ratio,ownerCropState.h*ratio);const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not create the cropped image.')),'image/jpeg',.92));const croppedFile=new File([blob],'baak-owner-profile.jpg',{type:'image/jpeg'});ownerCropSetStatus('Uploading your selected crop securely…');showToast('Uploading selected owner portrait…');const url=await baakUploadFile(croppedFile,'admin-media');const field=document.getElementById('admOwnerImageUrl');if(field)field.value=url;const preview=document.getElementById('admOwnerImagePreview'),fallback=document.getElementById('admOwnerImageFallback');if(preview){preview.src=url;preview.hidden=false;}if(fallback)fallback.style.display='none';const cropper=document.getElementById('ownerCropper');if(cropper)cropper.hidden=true;ownerCropSetStatus('Crop uploaded. Save & Publish Owner Profile to publish it.');showToast('Cropped owner portrait uploaded. Save & Publish Owner Profile to make it live.');
   }catch(error){ownerCropSetStatus(error.message+(ownerCropState.source&&/^https?:/i.test(ownerCropState.source)?' The image host may block secure cropping; upload the image file instead.':''));showToast('Could not upload cropped portrait: '+error.message);console.error('[BAAK] Owner crop upload failed:',error);}finally{if(button)button.disabled=false;}
 }
 (function bindOwnerCropDragging(){const stage=document.getElementById('ownerCropStage');if(!stage)return;stage.addEventListener('pointerdown',event=>{if(!ownerCropState.image)return;ownerCropState.drag=true;ownerCropState.pointerX=event.clientX;ownerCropState.pointerY=event.clientY;stage.setPointerCapture(event.pointerId);});stage.addEventListener('pointermove',event=>{if(!ownerCropState.drag)return;const rect=stage.getBoundingClientRect(),factor=280/rect.width;ownerCropState.x+=(event.clientX-ownerCropState.pointerX)*factor;ownerCropState.y+=(event.clientY-ownerCropState.pointerY)*factor;ownerCropState.pointerX=event.clientX;ownerCropState.pointerY=event.clientY;ownerCropClamp();ownerCropRender();});const stop=()=>{ownerCropState.drag=false;};stage.addEventListener('pointerup',stop);stage.addEventListener('pointercancel',stop);})();
