@@ -3381,28 +3381,27 @@ if(baakAdminModalForLiveSync&&window.MutationObserver){
     }
   }).observe(baakAdminModalForLiveSync,{attributes:true,attributeFilter:['class']});
 }
-window.addEventListener('DOMContentLoaded', async()=>{
-  // Prefer the latest shared cloud record before first paint, but never let a slow
-  // network or auth handshake hold the logo splash and block the whole website.
-  // If cloud startup finishes after the first render, reconcile it in the background.
-  // The branded logo remains the only loading surface.
+window.addEventListener('DOMContentLoaded',()=>{
+  // Paint immediately from the last locally cached snapshot (or built-in defaults).
+  // Never make first render wait for authentication, Supabase or Realtime.
   baakEnterSecretAdminRoute();
-  let firstRenderDone=false;
-  const cloudInit=baakInitSupabase().catch(error=>{
-    console.error('[BAAK] Supabase initialization failed:',error);
-  });
-  cloudInit.then(()=>{
-    if(firstRenderDone)baakRenderRemoteUpdate();
-  });
-  await Promise.race([cloudInit,new Promise(resolve=>window.setTimeout(()=>{
-    console.warn('[BAAK] Cloud startup is taking longer than expected; rendering available content while it continues.');
-    resolve();
-  },6500))]);
-  render();
-  firstRenderDone=true;
-  baakEnterSecretAdminRoute();
+  try{
+    render();
+  }catch(error){
+    console.error('[BAAK] Initial render failed:',error);
+  }
   document.documentElement.classList.add('baak-app-ready');
   window.dispatchEvent(new Event('baak:app-ready'));
+
+  // Start cloud initialization after first paint. When the latest shared record
+  // arrives, reconcile it without resetting the user's scroll or active controls.
+  Promise.resolve().then(()=>baakInitSupabase()).then(()=>{
+    if(baakCloudReady&&window.BAAK_REMOTE_DATA)baakRenderRemoteUpdate();
+    baakEnterSecretAdminRoute();
+  }).catch(error=>{
+    console.error('[BAAK] Supabase initialization failed:',error);
+    // Cached/public content remains available while the network recovers.
+  });
 });
 
 
@@ -3473,7 +3472,7 @@ window.addEventListener('DOMContentLoaded', async()=>{
     },520);
   };
   window.addEventListener('baak:app-ready',()=>{appReady=true;dismiss();},{once:true});
-  window.setTimeout(()=>{minimumTimeElapsed=true;dismiss();},5000);
+  window.setTimeout(()=>{minimumTimeElapsed=true;dismiss();},1800);
   if(appReady)dismiss();
 })();
 </script>
