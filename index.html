@@ -153,6 +153,8 @@ h1 em{font-style:normal;color:var(--gold-hover)}
 .service-card .num{font-size:10px;color:var(--gold);letter-spacing:.18em;font-weight:800}
 .service-card h3{font-size:18px;color:var(--navy);margin:16px 0 10px;font-weight:800}
 .service-card p{font-size:12px;line-height:1.7;color:var(--muted);margin:0 0 20px}
+.service-price{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;margin:0 0 19px;padding:12px 14px;border:1px solid rgba(195,136,43,.24);border-left:3px solid var(--gold);background:linear-gradient(110deg,rgba(195,136,43,.09),rgba(195,136,43,.025));width:fit-content;max-width:100%}.service-price-label{font-size:9px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}.service-price-value{font-size:16px;font-weight:800;letter-spacing:-.02em;color:var(--navy);font-variant-numeric:tabular-nums}.service-price-note{font-size:10px;color:var(--muted)}
+
 .service-action-btn{align-self:flex-start;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--navy);border-bottom:2px solid var(--gold);padding-bottom:4px;cursor:pointer;transition:.2s}
 .service-action-btn:hover{color:var(--gold-hover)}
 
@@ -513,6 +515,7 @@ html.baak-intro-active #app .stats .stat span{opacity:0!important;transform:tran
             <option value="builders">BAAK Builders</option>
             <option value="building-materials">BAAK Building Materials</option>
             <option value="barbershop">BAAK Barbershop</option>
+            <option value="jstar-barbershop">JSTAR Barbershop</option>
             <option value="logistics">BAAK Logistics</option>
             <option value="intertrade">BAAK Intertrade</option>
             <option value="motors">BAAK Motors</option>
@@ -594,6 +597,10 @@ html.baak-intro-active #app .stats .stat span{opacity:0!important;transform:tran
         <div class="field"><label for="admServiceCompany">Subsidiary</label><select id="admServiceCompany" onchange="loadAdminServiceEditor()"></select></div>
         <div class="field"><label for="admServiceSelect">Service</label><select id="admServiceSelect" onchange="loadAdminServiceEditor()"></select></div>
         <div class="field"><label for="admServiceTitle">Service title</label><input id="admServiceTitle" type="text" maxlength="140" placeholder="Service title"></div>
+        <div class="field"><label for="admServicePriceMode">Pricing display</label><select id="admServicePriceMode" onchange="toggleAdminServicePriceFields()"><option value="hidden">Do not display a price</option><option value="fixed">Fixed price</option><option value="from">Starting from</option><option value="quote">Request a quotation</option></select></div>
+        <div class="field" id="admServicePriceAmountWrap"><label for="admServicePriceAmount">Amount</label><input id="admServicePriceAmount" type="number" min="0" max="999999999" step="1" inputmode="numeric" placeholder="Enter actual price"></div>
+        <div class="field" id="admServicePriceCurrencyWrap"><label for="admServicePriceCurrency">Currency</label><select id="admServicePriceCurrency"><option value="TZS">Tanzanian Shilling (TZS)</option><option value="USD">US Dollar (USD)</option><option value="KES">Kenyan Shilling (KES)</option></select></div>
+        <div class="field" id="admServicePriceNoteWrap"><label for="admServicePriceNote">Optional price note</label><input id="admServicePriceNote" type="text" maxlength="90" placeholder="e.g. Final price depends on style"></div>
         <div class="field"><label for="admServiceMediaType">Media type</label><select id="admServiceMediaType" onchange="updateAdminServiceMediaPreview()"><option value="image">Image</option><option value="video">Video</option></select></div>
         <div class="field" style="grid-column:1/-1"><label for="admServiceDescription">Service description</label><textarea id="admServiceDescription" maxlength="1800" placeholder="Describe this service professionally..."></textarea></div>
         <div class="field" style="grid-column:1/-1"><label for="admServiceFile">Upload image or video from device</label><input id="admServiceFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,video/quicktime" onchange="handleAdminServiceUpload(this)"><small style="display:block;color:var(--muted);font-size:10px;margin-top:6px">Uploaded to the existing BAAK public Storage bucket. Maximum 50 MB.</small></div>
@@ -1084,7 +1091,7 @@ const DEFAULT_DATA = {
     },
     stats: {
       establishmentYear: "2019",
-      subsidiaryCompanies: "12",
+      subsidiaryCompanies: "13",
       completedProjects: "150+",
       location: "TZ",
       locationLabel: "Rooted in Tanzania"
@@ -1154,6 +1161,23 @@ const DEFAULT_DATA = {
       ],
       image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=1400&q=85',
       aboutImg: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?auto=format&fit=crop&w=1400&q=85',
+      phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
+    },
+    'jstar-barbershop': {
+      slug: 'jstar-barbershop', name: 'JSTAR BARBERSHOP', short: 'JSTAR BARBERSHOP', industry: 'Professional Grooming & Barber Services',
+      tagline: 'A sharper standard of everyday grooming.',
+      desc: 'JSTAR BARBERSHOP is a grooming business within the BAAK Group portfolio, focused on professional barber services and a welcoming customer experience.',
+      about: 'JSTAR BARBERSHOP operates as a distinct business identity within BAAK Group. Its profile and service offering can be managed independently through the group administration system while retaining the established BAAK Group website experience.',
+      services: [
+        ['Precision Haircuts & Fades', 'Professional haircut services, contemporary fades and classic styles tailored to each client.'],
+        ['Beard Trimming & Styling', 'Neat beard shaping, trimming and finishing for a clean, well-groomed appearance.'],
+        ['Hair Washing & Conditioning', 'Hair cleansing and conditioning as part of a comfortable grooming experience.'],
+        ['Kids’ Haircuts', 'Careful, age-appropriate haircut services in a welcoming barber environment.'],
+        ['Hair & Scalp Care', 'Grooming support focused on scalp cleanliness and everyday hair care.'],
+        ['Special Occasion Grooming', 'Personal grooming appointments for celebrations, events and important occasions.']
+      ],
+      image: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&w=1400&q=85',
+      aboutImg: 'https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=1400&q=85',
       phone: '+255761484845', email: 'baakgroupafrica@gmail.com'
     },
     'real-estate': {
@@ -1414,6 +1438,10 @@ const BAAK_SERVICE_DEFAULT_IMAGES={
     'photo-1503951914875-452162b0f3f1','photo-1621605815971-fbc98d665033','photo-1622286342621-4bd786c2447c',
     'photo-1599351431202-1e0f0137899a','photo-1622296089863-eb7fc530daa8','photo-1516975080664-ed2fc6a32937'
   ],
+  'jstar-barbershop':[
+    'photo-1503951914875-452162b0f3f1','photo-1621605815971-fbc98d665033','photo-1622286342621-4bd786c2447c',
+    'photo-1599351431202-1e0f0137899a','photo-1622296089863-eb7fc530daa8','photo-1516975080664-ed2fc6a32937'
+  ],
   'home-furniture':[
     'photo-1616486338812-3dadae4b4ace','photo-1555041469-a586c61ea9bc','photo-1493663284031-b7e3aefcae8e',
     'photo-1618221195710-dd6b41faaea6','photo-1600210492486-724fe5c67fb0','photo-1615874694520-474822394e73'
@@ -1477,6 +1505,26 @@ function baakGetCompanyServiceRecords(company){
     return {index,key:baakServiceKey(title),title,description,mediaUrl:media.url,mediaType:media.type,fallbackUrl,isDefaultMedia:media.isDefault};
   }).filter(service=>service.title||service.description);
 }
+function baakGetServicePricing(company,index,title){
+  const key=baakServiceKey(title),raw=company?.servicePricingByKey?.[key]||{};
+  const mode=['fixed','from','quote'].includes(raw.mode)?raw.mode:'hidden';
+  const amount=Number(raw.amount);
+  const currency=['TZS','USD','KES'].includes(raw.currency)?raw.currency:'TZS';
+  return {mode,amount:Number.isFinite(amount)&&amount>0?amount:0,currency,note:String(raw.note||'').slice(0,90)};
+}
+function baakFormatServicePrice(price){
+  const symbols={TZS:'TSh',USD:'US$',KES:'KSh'};
+  const amount=new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(price.amount);
+  if(price.mode==='quote')return '<span class="service-price-value">Request a Quote</span>';
+  if(!price.amount)return '';
+  return `<span class="service-price-value">${symbols[price.currency]||'TSh'} ${amount}</span>`;
+}
+function toggleAdminServicePriceFields(){
+ const mode=document.getElementById('admServicePriceMode')?.value||'hidden',show=mode==='fixed'||mode==='from';
+ ['admServicePriceAmountWrap','admServicePriceCurrencyWrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=show?'block':'none';});
+ const note=document.getElementById('admServicePriceNoteWrap');if(note)note.style.display=mode==='hidden'?'none':'block';
+}
+
 function baakNormalizeDB(payload) {
   if(!payload || typeof payload !== 'object') return DEFAULT_DATA;
   if(!payload.subscribers)payload.subscribers=DEFAULT_DATA.subscribers;
@@ -1488,11 +1536,11 @@ function baakNormalizeDB(payload) {
   payload.group.ownerProfile={...DEFAULT_DATA.group.ownerProfile,...(payload.group.ownerProfile||{})};
   const savedCompanies=payload.companies&&typeof payload.companies==='object'?payload.companies:{};
   const mergedCompanies={...JSON.parse(JSON.stringify(DEFAULT_DATA.companies)),...savedCompanies};
-  const preferredCompanyOrder=['builders','building-materials','barbershop','logistics','intertrade','motors','cosmetics','home-furniture','real-estate','energies','media','sports-entertainment'];
+  const preferredCompanyOrder=['builders','building-materials','barbershop','jstar-barbershop','logistics','intertrade','motors','cosmetics','home-furniture','real-estate','energies','media','sports-entertainment'];
   payload.companies={};
   [...preferredCompanyOrder,...Object.keys(mergedCompanies).filter(key=>!preferredCompanyOrder.includes(key))].forEach(key=>{if(mergedCompanies[key])payload.companies[key]=mergedCompanies[key];});
   Object.values(payload.companies).forEach(company=>{if(company){if(company.name)company.name=String(company.name).replace(/\s+LTD\b/gi,'').trim();if(!Array.isArray(company.serviceMedia))company.serviceMedia=[];if(!company.serviceMediaByKey||typeof company.serviceMediaByKey!=='object')company.serviceMediaByKey={};if(company.referenceNumber==null)company.referenceNumber='';}});
-  if(String(payload.group.stats?.subsidiaryCompanies||'').trim()==='07')payload.group.stats.subsidiaryCompanies='12';
+  if(['07','12'].includes(String(payload.group.stats?.subsidiaryCompanies||'').trim()))payload.group.stats.subsidiaryCompanies='13';
   if(!payload.group.stats)payload.group.stats={...DEFAULT_DATA.group.stats};
   else payload.group.stats={...DEFAULT_DATA.group.stats,...payload.group.stats};
   return payload;
@@ -1842,7 +1890,7 @@ function renderCompanyPage(c) {
         ${serviceRecords.map((service, i) => `
           <div class="service-card" data-service-index="${service.index}">
             ${service.mediaUrl?`<div class="service-media">${service.mediaType==='video'?`<video src="${escapeHtml(service.mediaUrl)}" controls playsinline preload="metadata" aria-label="${escapeHtml(service.title)} video"></video>`:`<img src="${escapeHtml(service.mediaUrl)}" data-fallback="${escapeHtml(service.fallbackUrl||'')}" onerror="if(this.dataset.fallback && this.src!==this.dataset.fallback && !this.dataset.fallbackTried){this.dataset.fallbackTried='1';this.src=this.dataset.fallback}else{this.style.visibility='hidden'}" alt="${escapeHtml(service.title)}" loading="lazy" decoding="async">`}</div>`:''}
-            <div class="service-card-body"><div><span class="num">SERVICE ${String(i+1).padStart(2,'0')}</span><h3>${escapeHtml(service.title)}</h3><p>${escapeHtml(service.description)}</p></div>
+            <div class="service-card-body"><div><span class="num">SERVICE ${String(i+1).padStart(2,'0')}</span><h3>${escapeHtml(service.title)}</h3><p>${escapeHtml(service.description)}</p>${(()=>{const pricing=baakGetServicePricing(c,service.index,service.title);if(pricing.mode==='hidden')return '';return `<div class="service-price"><span class="service-price-label">${pricing.mode==='from'?'Starting from':pricing.mode==='quote'?'Pricing':'Service fee'}</span>${baakFormatServicePrice(pricing)}${pricing.note?`<span class="service-price-note">${escapeHtml(pricing.note)}</span>`:''}</div>`;})()}</div>
               <div class="service-action-btn" data-service="${escapeHtml(service.title)}" onclick="scrollToEnquiry(this.dataset.service)">${c.slug==='building-materials'?'Request a Materials Quote':'Enquire About This Service'}</div>
             </div>
           </div>
@@ -2449,7 +2497,7 @@ function populateAdminServiceOptions(){
 }
 function loadAdminServiceEditor(){
  const key=document.getElementById('admServiceCompany')?.value;populateAdminServiceOptions();const i=Number(document.getElementById('admServiceSelect')?.value||0),company=getDB().companies?.[key],svc=company?.services?.[i];if(!svc)return;
- const media=baakGetServiceMedia(company,i,svc[0]);document.getElementById('admServiceTitle').value=svc[0]||'';document.getElementById('admServiceDescription').value=svc[1]||'';document.getElementById('admServiceMediaUrl').value=media.isDefault?'':(media.url||'');document.getElementById('admServiceMediaType').value=media.type||'image';
+ const media=baakGetServiceMedia(company,i,svc[0]);document.getElementById('admServiceTitle').value=svc[0]||'';document.getElementById('admServiceDescription').value=svc[1]||'';document.getElementById('admServiceMediaUrl').value=media.isDefault?'':(media.url||'');document.getElementById('admServiceMediaType').value=media.type||'image';const pricing=baakGetServicePricing(company,i,svc[0]);document.getElementById('admServicePriceMode').value=pricing.mode;document.getElementById('admServicePriceAmount').value=pricing.amount||'';document.getElementById('admServicePriceCurrency').value=pricing.currency;document.getElementById('admServicePriceNote').value=pricing.note;toggleAdminServicePriceFields();
  const status=document.getElementById('admServiceSaveStatus');if(status)status.textContent='Editing '+(company.name||key)+' · '+svc[0];updateAdminServiceMediaPreview();
 }
 function updateAdminServiceMediaPreview(){
@@ -2464,10 +2512,10 @@ async function handleAdminServiceUpload(input){
 }
 async function saveAdminServiceEditor(){
  if(!baakIsAdmin()||!baakSupabase){showToast('Sign in as an administrator before publishing.');return;}
- const key=document.getElementById('admServiceCompany')?.value,i=Number(document.getElementById('admServiceSelect')?.value||0),title=document.getElementById('admServiceTitle')?.value.trim()||'',description=document.getElementById('admServiceDescription')?.value.trim()||'',rawUrl=document.getElementById('admServiceMediaUrl')?.value.trim()||'',type=document.getElementById('admServiceMediaType')?.value||'image';
+ const key=document.getElementById('admServiceCompany')?.value,i=Number(document.getElementById('admServiceSelect')?.value||0),title=document.getElementById('admServiceTitle')?.value.trim()||'',description=document.getElementById('admServiceDescription')?.value.trim()||'',rawUrl=document.getElementById('admServiceMediaUrl')?.value.trim()||'',type=document.getElementById('admServiceMediaType')?.value||'image',priceMode=document.getElementById('admServicePriceMode')?.value||'hidden',priceAmount=Number(document.getElementById('admServicePriceAmount')?.value||0),priceCurrency=document.getElementById('admServicePriceCurrency')?.value||'TZS',priceNote=document.getElementById('admServicePriceNote')?.value.trim()||'';
  const db=JSON.parse(JSON.stringify(getDB())),company=db.companies?.[key];if(!company||!company.services?.[i]){showToast('Select a valid subsidiary service.');return;}if(!title||!description){showToast('Enter both a service title and description.');return;}
  const url=baakSafeMediaUrl(rawUrl);if(rawUrl&&!url){showToast('Use a valid HTTP/HTTPS media URL or upload a file.');return;}
- const previousTitle=company.services[i]?.[0]||'';company.services[i]=[title,description];company.serviceMedia=Array.isArray(company.serviceMedia)?company.serviceMedia:[];company.serviceMediaByKey=company.serviceMediaByKey&&typeof company.serviceMediaByKey==='object'?company.serviceMediaByKey:{};const oldKey=baakServiceKey(previousTitle),newKey=baakServiceKey(title);const previousKeyed=company.serviceMediaByKey[oldKey];if(url){company.serviceMediaByKey[newKey]={url,type};company.serviceMedia[i]={url,type};}else{delete company.serviceMediaByKey[oldKey];company.serviceMedia[i]=null;if(previousKeyed&&oldKey!==newKey)delete company.serviceMediaByKey[newKey];}
+ const previousTitle=company.services[i]?.[0]||'';company.services[i]=[title,description];company.servicePricingByKey=company.servicePricingByKey&&typeof company.servicePricingByKey==='object'?company.servicePricingByKey:{};const oldPriceKey=baakServiceKey(previousTitle),newPriceKey=baakServiceKey(title);if(oldPriceKey!==newPriceKey&&company.servicePricingByKey[oldPriceKey]&&!company.servicePricingByKey[newPriceKey])company.servicePricingByKey[newPriceKey]=company.servicePricingByKey[oldPriceKey];if(priceMode==='hidden')delete company.servicePricingByKey[newPriceKey];else if(priceMode==='quote')company.servicePricingByKey[newPriceKey]={mode:'quote',currency:priceCurrency,note:priceNote};else{if(!Number.isFinite(priceAmount)||priceAmount<=0){showToast('Enter a valid amount greater than zero, or choose another pricing display.');return;}company.servicePricingByKey[newPriceKey]={mode:priceMode,amount:priceAmount,currency:priceCurrency,note:priceNote};}if(oldPriceKey!==newPriceKey)delete company.servicePricingByKey[oldPriceKey];company.serviceMedia=Array.isArray(company.serviceMedia)?company.serviceMedia:[];company.serviceMediaByKey=company.serviceMediaByKey&&typeof company.serviceMediaByKey==='object'?company.serviceMediaByKey:{};const oldKey=baakServiceKey(previousTitle),newKey=baakServiceKey(title);const previousKeyed=company.serviceMediaByKey[oldKey];if(url){company.serviceMediaByKey[newKey]={url,type};company.serviceMedia[i]={url,type};}else{delete company.serviceMediaByKey[oldKey];company.serviceMedia[i]=null;if(previousKeyed&&oldKey!==newKey)delete company.serviceMediaByKey[newKey];}
  const btn=document.querySelector('#tab-services .service-admin-actions .btn.gold'),status=document.getElementById('admServiceSaveStatus');if(btn)btn.disabled=true;if(status)status.textContent='Publishing service changes…';
  const saved=await saveDB(db);if(btn)btn.disabled=false;if(!saved){if(status)status.textContent='Cloud publishing failed. Public content has not changed.';return;}
  showToast('Service updated and published to all visitors.');render({preservePosition:true});populateAdminServiceCompanies();document.getElementById('admServiceCompany').value=key;populateAdminServiceOptions();document.getElementById('admServiceSelect').value=String(i);loadAdminServiceEditor();if(status)status.textContent='Published successfully. Connected visitors receive this update in real time.';
