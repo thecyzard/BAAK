@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#1D2C59">
 <link rel="preconnect" href="https://htykjqxwqdkwxvjchyvy.supabase.co" crossorigin>
 <link rel="dns-prefetch" href="//htykjqxwqdkwxvjchyvy.supabase.co">
-
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
 <meta name="description" content="BAAK GROUP — Beyond Boundaries. A Tanzanian group of companies connecting opportunities across construction, property, energy, media, trade and services.">
 <script id="baak-intro-session-guard">
@@ -20,12 +20,12 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://htykjqxwqdkwxvjchyvy.supabase.co">
 <link rel="preconnect" href="https://images.unsplash.com">
 <link rel="dns-prefetch" href="https://fonts.googleapis.com">
-
-
+<link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+<link rel="dns-prefetch" href="https://htykjqxwqdkwxvjchyvy.supabase.co">
 <link rel="dns-prefetch" href="https://images.unsplash.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -304,6 +304,7 @@ input,textarea,select{max-width:100%;min-width:0}
 .owner-profile-copy h2{margin:8px 0 12px}.owner-profile-copy h3{margin:0;color:var(--navy);font-size:clamp(20px,2.4vw,27px);letter-spacing:-.035em}.owner-profile-role{margin:7px 0 14px;color:var(--gold);font-size:11px;font-weight:850;letter-spacing:.11em;text-transform:uppercase}.owner-profile-bio{max-width:690px;color:var(--muted);font-size:14px;line-height:1.85;margin:0}
 .owner-profile-portrait{width:220px;height:220px;border-radius:50%;padding:7px;margin:auto;background:linear-gradient(145deg,var(--gold),rgba(29,44,89,.25));box-shadow:0 14px 38px rgba(12,25,55,.16)}.owner-profile-portrait img,.owner-profile-placeholder{width:100%;height:100%;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:var(--navy);color:#fff;font-size:48px;font-weight:800;letter-spacing:.08em}
 .owner-admin-panel{margin-top:32px;padding:22px;border:1px solid var(--line);background:var(--surface,rgba(255,255,255,.72))}.owner-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}.owner-admin-bio{grid-column:1/-1}.owner-admin-grid textarea,.owner-admin-grid input{width:100%;font:inherit}.owner-admin-preview-wrap{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:18px;border:1px solid var(--line);background:var(--surface-2,rgba(128,128,128,.06))}.owner-admin-preview{width:112px;height:112px;border-radius:50%;overflow:hidden;border:4px solid var(--gold);background:var(--navy);display:grid;place-items:center;color:white;font-size:28px;font-weight:800}.owner-admin-preview img{width:100%;height:100%;object-fit:cover}.owner-admin-preview-name{font-size:13px;font-weight:850;color:var(--ink)}.owner-admin-preview-role{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.owner-cropper{grid-column:1/-1;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2,rgba(128,128,128,.06));display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,.8fr);gap:20px;align-items:center}.owner-cropper[hidden]{display:none!important}.owner-crop-stage{position:relative;width:min(100%,280px);aspect-ratio:1;margin:0 auto;overflow:hidden;border-radius:12px;background:#101827;touch-action:none;cursor:grab;user-select:none}.owner-crop-stage:active{cursor:grabbing}.owner-crop-stage img{position:absolute;max-width:none;max-height:none;pointer-events:none;user-select:none;will-change:transform}.owner-crop-ring{position:absolute;inset:0;border-radius:50%;border:3px solid var(--gold);box-shadow:0 0 0 999px rgba(5,12,25,.43);pointer-events:none}.owner-crop-stage:after{content:"DRAG TO REPOSITION";position:absolute;left:0;right:0;bottom:10px;text-align:center;font-size:9px;font-weight:800;letter-spacing:.13em;color:#fff;text-shadow:0 1px 5px #000;pointer-events:none}.owner-crop-controls{display:flex;flex-direction:column;gap:12px}.owner-crop-controls label{font-size:11px;font-weight:800;color:var(--ink)}.owner-crop-controls input[type=range]{width:100%;accent-color:var(--gold)}.owner-crop-actions{display:flex;flex-wrap:wrap;gap:9px}.owner-crop-help{font-size:11px;color:var(--muted);line-height:1.65}.owner-admin-preview{width:128px;height:128px;border-width:5px;box-shadow:0 8px 24px rgba(12,25,55,.14)}
 @media(max-width:700px){.owner-profile-wrap{grid-template-columns:1fr;gap:24px;padding:26px 20px;text-align:center}.owner-profile-portrait{grid-row:1;width:174px;height:174px}.owner-admin-grid{grid-template-columns:1fr}.owner-admin-bio,.owner-admin-preview-wrap{grid-column:1}.owner-admin-panel{padding:16px}.brand-group{font-size:9px;padding-left:7px}.brand-group small{font-size:6.5px}.brand-group .brand-motto{font-size:5.5px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
@@ -575,8 +576,12 @@ html.baak-intro-active #app .stats .stat span{opacity:0!important;transform:tran
           <div class="field"><label for="admOwnerName">Owner name</label><input id="admOwnerName" type="text" maxlength="120" value="Geofrey Mwendapole James" oninput="updateOwnerProfilePreview()"></div>
           <div class="field"><label for="admOwnerRole">Position / title</label><input id="admOwnerRole" type="text" maxlength="120" value="Owner, BAAK Group" oninput="updateOwnerProfilePreview()"></div>
           <div class="field owner-admin-bio"><label for="admOwnerBio">Professional introduction</label><textarea id="admOwnerBio" maxlength="1600" rows="5"></textarea></div>
-          <div class="field owner-admin-bio"><label for="admOwnerImageFile">Upload profile photograph</label><input id="admOwnerImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOwnerProfileUpload(this)"><small>Use a clear, professional portrait. The website displays it in a circular profile frame.</small></div>
-          <div class="field owner-admin-bio"><label for="admOwnerImageUrl">Or paste profile image URL</label><input id="admOwnerImageUrl" type="url" maxlength="2000" placeholder="https://example.com/owner-photo.jpg" oninput="updateOwnerProfilePreview()"></div>
+          <div class="field owner-admin-bio"><label for="admOwnerImageFile">Upload profile photograph</label><input id="admOwnerImageFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="handleOwnerProfileUpload(this)"><small>Choose a portrait, then drag and zoom it into the circular frame before publishing.</small></div>
+          <div class="field owner-admin-bio"><label for="admOwnerImageUrl">Or paste profile image URL</label><input id="admOwnerImageUrl" type="url" maxlength="2000" placeholder="https://example.com/owner-photo.jpg" onchange="handleOwnerProfileUrl(this.value)"></div>
+          <div class="owner-cropper" id="ownerCropper" hidden>
+            <div class="owner-crop-stage" id="ownerCropStage" aria-label="Drag image to position it inside the circular profile frame"><img id="ownerCropImage" alt="Adjust owner portrait crop"><div class="owner-crop-ring"></div></div>
+            <div class="owner-crop-controls"><div><label for="ownerCropZoom">Zoom image</label><input id="ownerCropZoom" type="range" min="1" max="3" step="0.01" value="1" oninput="updateOwnerCropZoom(this.value)"></div><p class="owner-crop-help">Move the photograph with your mouse or finger. The gold circle shows exactly what will appear in the owner profile. The saved crop is used on the website.</p><div class="owner-crop-actions"><button type="button" class="btn gold small" id="ownerCropApply" onclick="applyOwnerProfileCrop()">Apply crop & upload</button><button type="button" class="btn outline small" onclick="resetOwnerProfileCrop()">Reset position</button></div><small id="ownerCropStatus" class="owner-crop-help" aria-live="polite"></small></div>
+          </div>
           <div class="owner-admin-preview-wrap"><span class="stats-admin-preview-label">PROFILE PREVIEW</span><div class="owner-admin-preview"><img id="admOwnerImagePreview" alt="Owner profile preview" hidden><span id="admOwnerImageFallback">GJ</span></div><div id="admOwnerPreviewName" class="owner-admin-preview-name">Geofrey Mwendapole James</div><div id="admOwnerPreviewRole" class="owner-admin-preview-role">Owner, BAAK Group</div></div>
         </div>
         <div class="service-admin-actions"><button type="button" class="btn gold small" onclick="saveOwnerProfile()">Save & Publish Owner Profile</button></div>
@@ -2292,6 +2297,7 @@ async function saveAdminStats() {
   loadAdminStats();
 }
 
+let ownerCropState={image:null,source:'',objectUrl:'',baseW:0,baseH:0,x:0,y:0,w:0,h:0,zoom:1,drag:false,pointerX:0,pointerY:0};
 function loadOwnerProfileEditor(){
   const profile=getDB().group?.ownerProfile||DEFAULT_DATA.group.ownerProfile;
   const name=document.getElementById('admOwnerName'),role=document.getElementById('admOwnerRole'),bio=document.getElementById('admOwnerBio'),url=document.getElementById('admOwnerImageUrl');
@@ -2300,18 +2306,31 @@ function loadOwnerProfileEditor(){
 }
 function updateOwnerProfilePreview(){
   const url=document.getElementById('admOwnerImageUrl')?.value.trim()||'',img=document.getElementById('admOwnerImagePreview'),fallback=document.getElementById('admOwnerImageFallback');
-  if(img){img.hidden=!url;img.src=url;img.onerror=()=>{img.hidden=true;if(fallback)fallback.style.display='grid';};img.onload=()=>{if(fallback)fallback.style.display='none';};}
+  if(img&&url){img.hidden=false;if(img.src!==url)img.src=url;img.onerror=()=>{img.hidden=true;if(fallback)fallback.style.display='grid';};img.onload=()=>{if(fallback)fallback.style.display='none';};}
+  else if(img){img.hidden=true;img.removeAttribute('src');}
   if(fallback&&!url)fallback.style.display='grid';
   const name=document.getElementById('admOwnerName')?.value.trim()||'Geofrey Mwendapole James',role=document.getElementById('admOwnerRole')?.value.trim()||'Owner, BAAK Group';
   const n=document.getElementById('admOwnerPreviewName'),r=document.getElementById('admOwnerPreviewRole');if(n)n.textContent=name;if(r)r.textContent=role;
 }
-async function handleOwnerProfileUpload(input){
-  const file=input.files&&input.files[0];if(!file)return;
-  if(!/^image\/(jpeg|png|webp|gif)$/.test(file.type)){showToast('Please choose a JPG, PNG, WEBP or GIF image.');input.value='';return;}
-  if(file.size>12*1024*1024){showToast('Profile photo must be 12 MB or smaller.');input.value='';return;}
-  try{showToast('Uploading owner portrait securely…');const url=await baakUploadFile(file,'admin-media');const field=document.getElementById('admOwnerImageUrl');if(field)field.value=url;updateOwnerProfilePreview();showToast('Profile photo uploaded. Save & Publish Owner Profile to make it live.');}
-  catch(error){showToast('Profile photo upload failed: '+error.message);console.error('[BAAK] Owner image upload failed:',error);}
+function ownerCropSetStatus(message){const el=document.getElementById('ownerCropStatus');if(el)el.textContent=message||'';}
+function ownerCropClamp(){const size=280;ownerCropState.x=Math.min(0,Math.max(size-ownerCropState.w,ownerCropState.x));ownerCropState.y=Math.min(0,Math.max(size-ownerCropState.h,ownerCropState.y));}
+function ownerCropRender(){const image=document.getElementById('ownerCropImage'),stage=document.getElementById('ownerCropStage');if(!image||!stage||!ownerCropState.image)return;const scale=stage.getBoundingClientRect().width/280;image.style.width=(ownerCropState.w*scale)+'px';image.style.height=(ownerCropState.h*scale)+'px';image.style.left=(ownerCropState.x*scale)+'px';image.style.top=(ownerCropState.y*scale)+'px';}
+function ownerCropLoadImage(source){return new Promise((resolve,reject)=>{const image=new Image();if(/^https?:/i.test(source))image.crossOrigin='anonymous';image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('Image could not be loaded. Check the image URL or choose another photo.'));image.src=source;});}
+async function ownerCropOpen(source){
+  try{ownerCropSetStatus('Loading photo…');const image=await ownerCropLoadImage(source);ownerCropState.image=image;ownerCropState.source=source;const scale=Math.max(280/image.naturalWidth,280/image.naturalHeight);ownerCropState.baseW=image.naturalWidth*scale;ownerCropState.baseH=image.naturalHeight*scale;ownerCropState.zoom=1;ownerCropState.w=ownerCropState.baseW;ownerCropState.h=ownerCropState.baseH;ownerCropState.x=(280-ownerCropState.w)/2;ownerCropState.y=(280-ownerCropState.h)/2;const zoom=document.getElementById('ownerCropZoom');if(zoom)zoom.value='1';const stage=document.getElementById('ownerCropper');if(stage)stage.hidden=false;ownerCropRender();ownerCropSetStatus('Ready. Drag to position, then apply your crop.');}
+  catch(error){ownerCropSetStatus(error.message);showToast(error.message);}
 }
+function handleOwnerProfileUpload(input){const file=input.files&&input.files[0];if(!file)return;if(!/^image\/(jpeg|png|webp|gif)$/.test(file.type)){showToast('Please choose a JPG, PNG, WEBP or GIF image.');input.value='';return;}if(file.size>12*1024*1024){showToast('Profile photo must be 12 MB or smaller.');input.value='';return;}if(ownerCropState.objectUrl)URL.revokeObjectURL(ownerCropState.objectUrl);ownerCropState.objectUrl=URL.createObjectURL(file);ownerCropOpen(ownerCropState.objectUrl);}
+function handleOwnerProfileUrl(value){const url=String(value||'').trim();if(!url)return;if(!baakSafeMediaUrl(url)){showToast('Please enter a valid HTTPS image URL.');return;}ownerCropOpen(url);}
+function updateOwnerCropZoom(value){if(!ownerCropState.image)return;const next=Math.max(1,Math.min(3,Number(value)||1)),cx=ownerCropState.x+ownerCropState.w/2,cy=ownerCropState.y+ownerCropState.h/2;ownerCropState.zoom=next;ownerCropState.w=ownerCropState.baseW*next;ownerCropState.h=ownerCropState.baseH*next;ownerCropState.x=cx-ownerCropState.w/2;ownerCropState.y=cy-ownerCropState.h/2;ownerCropClamp();ownerCropRender();}
+function resetOwnerProfileCrop(){if(!ownerCropState.image)return;ownerCropState.zoom=1;ownerCropState.w=ownerCropState.baseW;ownerCropState.h=ownerCropState.baseH;ownerCropState.x=(280-ownerCropState.w)/2;ownerCropState.y=(280-ownerCropState.h)/2;const zoom=document.getElementById('ownerCropZoom');if(zoom)zoom.value='1';ownerCropRender();}
+async function applyOwnerProfileCrop(){
+  if(!ownerCropState.image)return;const button=document.getElementById('ownerCropApply');if(button)button.disabled=true;
+  try{const canvas=document.createElement('canvas');canvas.width=720;canvas.height=720;const ctx=canvas.getContext('2d',{alpha:false});const ratio=720/280;ctx.fillStyle='#ffffff';ctx.fillRect(0,0,720,720);ctx.drawImage(ownerCropState.image,ownerCropState.x*ratio,ownerCropState.y*ratio,ownerCropState.w*ratio,ownerCropState.h*ratio);const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Could not create the cropped image.')),'image/jpeg',.92));const croppedFile=new File([blob],'baak-owner-profile.jpg',{type:'image/jpeg'});ownerCropSetStatus('Uploading your selected crop securely…');showToast('Uploading selected owner portrait…');const url=await baakUploadFile(croppedFile,'admin-media');const field=document.getElementById('admOwnerImageUrl');if(field)field.value=url;const preview=document.getElementById('admOwnerImagePreview'),fallback=document.getElementById('admOwnerImageFallback');if(preview){preview.src=url;preview.hidden=false;}if(fallback)fallback.style.display='none';const cropper=document.getElementById('ownerCropper');if(cropper)cropper.hidden=true;ownerCropSetStatus('Crop uploaded. Save & Publish Owner Profile to publish it.');showToast('Cropped owner portrait uploaded. Save & Publish Owner Profile to make it live.');
+  }catch(error){ownerCropSetStatus(error.message+(ownerCropState.source&&/^https?:/i.test(ownerCropState.source)?' The image host may block secure cropping; upload the image file instead.':''));showToast('Could not upload cropped portrait: '+error.message);console.error('[BAAK] Owner crop upload failed:',error);}finally{if(button)button.disabled=false;}
+}
+(function bindOwnerCropDragging(){const stage=document.getElementById('ownerCropStage');if(!stage)return;stage.addEventListener('pointerdown',event=>{if(!ownerCropState.image)return;ownerCropState.drag=true;ownerCropState.pointerX=event.clientX;ownerCropState.pointerY=event.clientY;stage.setPointerCapture(event.pointerId);});stage.addEventListener('pointermove',event=>{if(!ownerCropState.drag)return;const rect=stage.getBoundingClientRect(),factor=280/rect.width;ownerCropState.x+=(event.clientX-ownerCropState.pointerX)*factor;ownerCropState.y+=(event.clientY-ownerCropState.pointerY)*factor;ownerCropState.pointerX=event.clientX;ownerCropState.pointerY=event.clientY;ownerCropClamp();ownerCropRender();});const stop=()=>{ownerCropState.drag=false;};stage.addEventListener('pointerup',stop);stage.addEventListener('pointercancel',stop);})();
+
 async function saveOwnerProfile(){
   if(!baakIsAdmin()||!baakSupabase){showToast('An authenticated administrator session is required to publish changes.');return;}
   const db=getDB(),name=document.getElementById('admOwnerName')?.value.trim()||'',role=document.getElementById('admOwnerRole')?.value.trim()||'',bio=document.getElementById('admOwnerBio')?.value.trim()||'',image=document.getElementById('admOwnerImageUrl')?.value.trim()||'';
