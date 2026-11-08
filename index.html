@@ -872,6 +872,8 @@ let baakRealtimeChannel = null;
 let baakAdminRealtimeChannel = null;
 let baakAdminInboxRefreshTimer = null;
 let baakSaveQueue = Promise.resolve();
+let baakSaveQueuePending = false;
+let baakCommittedSnapshot = null;
 let baakLastRemoteUpdatedAt = null;
 let baakCloudLoadPromise = null;
 let baakLastCloudLoadAt = 0;
@@ -968,9 +970,11 @@ async function baakSyncLiveContent(){
     const changed=(incomingStamp!==baakLastRemoteUpdatedAt)||
       (JSON.stringify(data.payload)!==JSON.stringify(window.BAAK_REMOTE_DATA));
     if(!changed)return false;
+    if(baakSaveQueuePending)return false;
     window.BAAK_REMOTE_DATA=data.payload;
     baakLastRemoteUpdatedAt=incomingStamp;
-    baakCacheDB(data.payload);
+    const normalized=baakCacheDB(data.payload);
+    baakCommittedSnapshot=JSON.parse(JSON.stringify(normalized));
     baakRenderRemoteUpdate();
     return true;
   })();
@@ -1001,9 +1005,11 @@ async function baakInitSupabase(){
       const changed=(incomingStamp!==baakLastRemoteUpdatedAt)||
         (JSON.stringify(payload.new.payload)!==JSON.stringify(window.BAAK_REMOTE_DATA));
       if(!changed)return;
+      if(baakSaveQueuePending)return;
       window.BAAK_REMOTE_DATA=payload.new.payload;
       baakLastRemoteUpdatedAt=incomingStamp;
-      baakCacheDB(payload.new.payload);
+      const normalized=baakCacheDB(payload.new.payload);
+      baakCommittedSnapshot=JSON.parse(JSON.stringify(normalized));
       baakRenderRemoteUpdate();
     }).subscribe(status=>{
       if(status==='SUBSCRIBED'){
@@ -1033,12 +1039,13 @@ async function baakLoadCloudData(options={}){
       else payload.group.stats={...DEFAULT_DATA.group.stats,...payload.group.stats};
       window.BAAK_REMOTE_DATA=payload;
       baakLastRemoteUpdatedAt=data.updated_at||null;
-      baakCacheDB(payload);
+      const normalized=baakCacheDB(payload);
+      baakCommittedSnapshot=JSON.parse(JSON.stringify(normalized));
     }else if(baakIsAdmin()){
       const seed=getDB();
       const {error:seedError}=await baakSupabase.from('baak_site_data').upsert({id:BAAK_DB_ROW_ID,payload:seed,updated_at:new Date().toISOString(),updated_by:baakSession.user.id});
       if(seedError)console.error('[BAAK] Initial data seed failed:',seedError.message);
-      else window.BAAK_REMOTE_DATA=seed;
+      else {window.BAAK_REMOTE_DATA=seed;baakCommittedSnapshot=JSON.parse(JSON.stringify(baakNormalizeDB(seed)));}
     }else{
       console.warn('[BAAK] No published cloud content row exists yet; the site is using its built-in initial content. An administrator must publish the first version.');
     }
@@ -1599,12 +1606,33 @@ function baakNormalizeDB(payload) {
   payload.companies={};
   [...preferredCompanyOrder,...Object.keys(mergedCompanies).filter(key=>!preferredCompanyOrder.includes(key))].forEach(key=>{if(mergedCompanies[key])payload.companies[key]=mergedCompanies[key];});
   Object.values(payload.companies).forEach(company=>{if(company){if(company.name)company.name=String(company.name).replace(/\s+LTD\b/gi,'').trim();if(!Array.isArray(company.serviceMedia))company.serviceMedia=[];if(!company.serviceMediaByKey||typeof company.serviceMediaByKey!=='object')company.serviceMediaByKey={};if(company.referenceNumber==null)company.referenceNumber='';}});
-  const barberSupply=payload.companies.barbershop;if(barberSupply){barberSupply.name='BAAK BARBER & GROOMING SUPPLIES';barberSupply.short='BARBER SUPPLIES';barberSupply.industry='Beauty & Grooming Products';barberSupply.tagline='Professional barber essentials. Quality tools. Better results.';barberSupply.desc='A specialist destination for professional barber equipment, grooming tools, hair and beard care products, salon consumables and accessories for barbers, grooming studios and personal use.';barberSupply.about='BAAK BARBER & GROOMING SUPPLIES brings together practical, quality-focused products for the modern barber and grooming professional. The catalogue covers cutting equipment, styling tools, sanitation essentials, hair and beard care, workstation accessories and salon consumables. Customers can enquire about product availability, specifications and bulk supply directly through the website.';barberSupply.services=DEFAULT_DATA.companies.barbershop.services; }
+  // Never replace administrator-authored barber-supply content during normalization.
+  const barberSupply=payload.companies.barbershop;
+  if(barberSupply){
+    const defaults=DEFAULT_DATA.companies.barbershop||{};
+    ['name','short','industry','tagline','desc','about'].forEach(field=>{
+      if(barberSupply[field]===undefined||barberSupply[field]===null)barberSupply[field]=defaults[field]??'';
+    });
+    if(!Array.isArray(barberSupply.services))barberSupply.services=JSON.parse(JSON.stringify(defaults.services||[]));
+  }
   // BAAK Construction & Materials is one subsidiary with two operating divisions.
   // Keep the original division records intact so their services, images, pricing and enquiries are preserved.
   const buildersDivision=payload.companies.builders, materialsDivision=payload.companies['building-materials'];
   if(buildersDivision&&materialsDivision){
-    payload.companies['construction-materials']={slug:'construction-materials',name:'BAAK CONSTRUCTION & MATERIALS',short:'CONSTRUCTION & MATERIALS',industry:'Construction, Engineering & Building Materials',tagline:'Integrated construction expertise and dependable materials supply.',desc:'One integrated subsidiary bringing together BAAK Builders and BAAK Building Materials as two specialist operating divisions.',about:'BAAK Construction & Materials unites professional construction, civil engineering and project delivery with dependable sourcing and supply of essential building materials. Its two specialist divisions retain their distinct expertise, services and customer enquiry pathways under one subsidiary.',image:buildersDivision.image,aboutImg:buildersDivision.aboutImg,phone:buildersDivision.phone,email:buildersDivision.email,establishmentYear:buildersDivision.establishmentYear||materialsDivision.establishmentYear||'2019',divisions:{builders:buildersDivision,buildingMaterials:materialsDivision}};
+    const existing=payload.companies['construction-materials']||{};
+    payload.companies['construction-materials']={
+      slug:'construction-materials',...existing,
+      name:existing.name||'BAAK CONSTRUCTION & MATERIALS',
+      short:existing.short||'CONSTRUCTION & MATERIALS',
+      industry:existing.industry||'Construction, Engineering & Building Materials',
+      tagline:existing.tagline||'Integrated construction expertise and dependable materials supply.',
+      desc:existing.desc||'One integrated subsidiary bringing together BAAK Builders and BAAK Building Materials as two specialist operating divisions.',
+      about:existing.about||'BAAK Construction & Materials unites professional construction, civil engineering and project delivery with dependable sourcing and supply of essential building materials.',
+      image:existing.image||buildersDivision.image,aboutImg:existing.aboutImg||buildersDivision.aboutImg,
+      phone:existing.phone??buildersDivision.phone??'',email:existing.email??buildersDivision.email??'',
+      establishmentYear:existing.establishmentYear||buildersDivision.establishmentYear||materialsDivision.establishmentYear||'2019',
+      divisions:{builders:buildersDivision,buildingMaterials:materialsDivision}
+    };
   }
   // Put the consolidated subsidiary first in every public portfolio while retaining
   // the two legacy division records for their admin editors and service catalogues.
@@ -1613,10 +1641,8 @@ function baakNormalizeDB(payload) {
   const orderedCompanies={};
   [...publicCompanyOrder,...retainedDivisionOrder,...Object.keys(payload.companies).filter(key=>![...publicCompanyOrder,...retainedDivisionOrder].includes(key))].forEach(key=>{if(payload.companies[key])orderedCompanies[key]=payload.companies[key];});
   payload.companies=orderedCompanies;
-  if(['07','12','13'].includes(String(payload.group.stats?.subsidiaryCompanies||'').trim()))payload.group.stats.subsidiaryCompanies='12';
   if(!payload.group.stats)payload.group.stats={...DEFAULT_DATA.group.stats};
   else payload.group.stats={...DEFAULT_DATA.group.stats,...payload.group.stats};
-  payload.group.stats.subsidiaryCompanies='12';
   return payload;
 }
 function baakCacheDB(payload, persist=true) {
@@ -1637,37 +1663,71 @@ function getDB() {
   return baakLocalDBCache;
 }
 
-async function baakPersistData(data) {
-  if(!baakSupabase || !baakIsAdmin()) return {ok:false,error:'Administrator session is not active.'};
-  try {
-    const payload = JSON.parse(JSON.stringify(data));
-    const {error} = await baakSupabase.from('baak_site_data').upsert({
-      id: BAAK_DB_ROW_ID,
-      payload,
-      updated_at: new Date().toISOString(),
-      updated_by: baakSession.user.id
-    }, {onConflict:'id'});
-    if(error) throw error;
-    window.BAAK_REMOTE_DATA = payload;
-    baakLastRemoteUpdatedAt = new Date().toISOString();
-    return {ok:true};
-  } catch(error) {
-    console.error('[BAAK] Cloud content save failed:', error);
-    return {ok:false,error:error.message || 'Cloud save failed.'};
-  }
+function baakBuildPatch(before,after,path=[],ops=[]){
+  if(JSON.stringify(before)===JSON.stringify(after))return ops;
+  const plain=v=>v&&typeof v==='object'&&!Array.isArray(v);
+  if(plain(before)&&plain(after)){
+    const keys=new Set([...Object.keys(before),...Object.keys(after)]);
+    for(const key of keys){
+      if(!(key in after))ops.push({path:[...path,key],remove:true});
+      else if(!(key in before))ops.push({path:[...path,key],value:after[key]});
+      else baakBuildPatch(before[key],after[key],[...path,key],ops);
+    }
+  }else ops.push({path,value:after});
+  return ops;
 }
-
+function baakApplyPatch(target,ops){
+  const clone=JSON.parse(JSON.stringify(target||{}));
+  for(const op of ops){
+    if(!op.path.length)continue;
+    let node=clone;
+    for(let i=0;i<op.path.length-1;i++){
+      const key=op.path[i];
+      if(!node[key]||typeof node[key]!=='object'||Array.isArray(node[key]))node[key]={};
+      node=node[key];
+    }
+    const key=op.path[op.path.length-1];
+    if(op.remove)delete node[key];else node[key]=JSON.parse(JSON.stringify(op.value));
+  }
+  return clone;
+}
+async function baakPersistData(data) {
+  if(!baakSupabase || !baakIsAdmin())return {ok:false,error:'Administrator session is not active.'};
+  const candidate=JSON.parse(JSON.stringify(data));
+  const task=async()=>{
+    baakSaveQueuePending=true;
+    try{
+      const {data:latestRow,error:readError}=await baakSupabase.from('baak_site_data')
+        .select('payload,updated_at').eq('id',BAAK_DB_ROW_ID).maybeSingle();
+      if(readError)throw readError;
+      const baseline=baakCommittedSnapshot||JSON.parse(JSON.stringify(latestRow?.payload||candidate));
+      const patch=baakBuildPatch(baseline,candidate);
+      const latest=latestRow?.payload?JSON.parse(JSON.stringify(latestRow.payload)):JSON.parse(JSON.stringify(baseline));
+      const merged=baakApplyPatch(latest,patch);
+      const stamp=new Date().toISOString();
+      const {error}=await baakSupabase.from('baak_site_data').upsert({
+        id:BAAK_DB_ROW_ID,payload:merged,updated_at:stamp,updated_by:baakSession.user.id
+      },{onConflict:'id'});
+      if(error)throw error;
+      window.BAAK_REMOTE_DATA=merged;
+      baakLastRemoteUpdatedAt=stamp;
+      const normalized=baakCacheDB(merged);
+      baakCommittedSnapshot=JSON.parse(JSON.stringify(normalized));
+      baakRenderRemoteUpdate();
+      return {ok:true};
+    }catch(error){
+      console.error('[BAAK] Cloud content save failed:',error);
+      return {ok:false,error:error.message||'Cloud save failed.'};
+    }finally{baakSaveQueuePending=false;}
+  };
+  const result=baakSaveQueue.then(task,task);
+  baakSaveQueue=result.then(()=>undefined,()=>undefined);
+  return result;
+}
 async function saveDB(data) {
-  if(!baakIsAdmin() || !baakSupabase) {
-    showToast('An authenticated administrator session is required to publish changes.');
-    return false;
-  }
-  const result = await baakPersistData(data);
-  if(!result.ok) {
-    showToast('Cloud save failed: ' + result.error);
-    return false;
-  }
-  baakCacheDB(data);
+  if(!baakIsAdmin()||!baakSupabase){showToast('An authenticated administrator session is required to publish changes.');return false;}
+  const result=await baakPersistData(data);
+  if(!result.ok){showToast('Cloud save failed: '+result.error);return false;}
   return true;
 }
 
@@ -2797,17 +2857,18 @@ function editNews(id) {
   document.getElementById('newsFormContainer').style.display = 'block';
 }
 
-function deleteNews(id) {
+async function deleteNews(id) {
   if (!confirm('Are you sure you want to delete this news article?')) return;
   const db = getDB();
   db.news = db.news.filter(item => item.id !== id);
-  saveDB(db);
-  showToast('News article deleted successfully!');
+  const saved=await saveDB(db);
+  if(!saved)return;
+  showToast('News article deleted and confirmed by the cloud.');
   renderAdminNewsList();
   render();
 }
 
-function handleSaveNews(e) {
+async function handleSaveNews(e) {
   e.preventDefault();
   const db = getDB();
   const editId = document.getElementById('editNewsId').value;
@@ -2829,8 +2890,9 @@ function handleSaveNews(e) {
     db.news.unshift(newsObj);
   }
 
-  saveDB(db);
-  showToast('News article published live successfully!');
+  const saved=await saveDB(db);
+  if(!saved)return;
+  showToast('News article published and confirmed by the cloud.');
   closeNewsForm();
   renderAdminNewsList();
   render();
@@ -2901,17 +2963,18 @@ function editReport(id) {
   document.getElementById('reportFormContainer').style.display = 'block';
 }
 
-function deleteReport(id) {
+async function deleteReport(id) {
   if (!confirm('Are you sure you want to delete this report?')) return;
   const db = getDB();
   db.reports = db.reports.filter(item => item.id !== id);
-  saveDB(db);
-  showToast('Financial report deleted successfully!');
+  const saved=await saveDB(db);
+  if(!saved)return;
+  showToast('Financial report deleted and confirmed by the cloud.');
   renderAdminReportList();
   render();
 }
 
-function handleSaveReport(e) {
+async function handleSaveReport(e) {
   e.preventDefault();
   const db = getDB();
   const editId = document.getElementById('editReportId').value;
@@ -2931,8 +2994,9 @@ function handleSaveReport(e) {
     db.reports.unshift(reportObj);
   }
 
-  saveDB(db);
-  showToast('Financial report published live successfully!');
+  const saved=await saveDB(db);
+  if(!saved)return;
+  showToast('Financial report published and confirmed by the cloud.');
   closeReportForm();
   renderAdminReportList();
   render();
@@ -3081,17 +3145,18 @@ function editJob(id) {
   document.getElementById('jobFormContainer').style.display = 'block';
 }
 
-function deleteJob(id) {
+async function deleteJob(id) {
   if (!confirm('Are you sure you want to delete this job vacancy?')) return;
   const db = getDB();
   db.jobs = db.jobs.filter(j => j.id !== id);
-  saveDB(db);
-  showToast('Job vacancy deleted successfully!');
+  const saved=await saveDB(db);
+  if(!saved)return;
+  showToast('Job vacancy deleted and confirmed by the cloud.');
   renderAdminJobsList();
   render();
 }
 
-function handleSaveJob(e) {
+async function handleSaveJob(e) {
   e.preventDefault();
   const db = getDB();
   const editId = document.getElementById('editJobId').value;
@@ -3112,8 +3177,9 @@ function handleSaveJob(e) {
     db.jobs.push(jobObj);
   }
 
-  saveDB(db);
-  showToast(editId ? 'Job vacancy updated!' : 'New job vacancy posted live!');
+  const saved=await saveDB(db);
+  if(!saved)return;
+  showToast(editId ? 'Job vacancy updated and confirmed by the cloud!' : 'New job vacancy published and confirmed by the cloud!');
   closeJobForm();
   renderAdminJobsList();
   render();
