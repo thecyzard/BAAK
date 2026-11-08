@@ -75,12 +75,22 @@ h1 em{font-style:normal;color:var(--gold-hover)}
 .stat{padding:35px 24px;border-right:1px solid var(--line);text-align:center;position:relative;--stat-delay:0ms}
 .stat:last-child{border-right:0}
 .stat strong{display:inline-block;font-size:36px;letter-spacing:-.05em;color:var(--navy);font-weight:900;position:relative;z-index:1;opacity:1;transform:none}
-.stat span{display:block;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:700;position:relative;z-index:1;opacity:1;transform:none}
-.stats.stats-motion-ready .stat strong{animation:baakStatSettle .82s cubic-bezier(.2,.75,.25,1) var(--stat-delay) both}
-.stats.stats-motion-ready .stat span{animation:baakStatLabel .68s cubic-bezier(.2,.75,.25,1) calc(var(--stat-delay) + .16s) both}
-@keyframes baakStatSettle{0%{opacity:0;transform:translateY(16px) scale(.975);filter:blur(2px)}65%{opacity:1;filter:blur(0)}100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
-@keyframes baakStatLabel{0%{opacity:0;transform:translateY(9px)}100%{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:reduce){.stats.stats-motion-ready .stat strong,.stats.stats-motion-ready .stat span{animation:none!important;opacity:1!important;transform:none!important}}
+.stat > span{display:block;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-top:6px;font-weight:700;position:relative;z-index:1;opacity:1;transform:none}
+.stats.stats-motion-ready .stat strong{transform:none;filter:none;clip-path:none}
+.stat-piece{display:inline-block;min-width:0;opacity:0;transform:translate3d(var(--piece-x),var(--piece-y),0) rotate(var(--piece-rotate)) scale(.72);transform-origin:50% 65%;will-change:transform,opacity;backface-visibility:hidden}
+.stats.stats-motion-ready .stat-piece{animation:baakStatPuzzleJoin .82s cubic-bezier(.16,.82,.22,1) calc(var(--stat-delay) + var(--piece-delay)) both}
+.stats.stats-motion-ready .stat > span{animation:baakStatCaptionReveal .72s cubic-bezier(.2,.75,.25,1) calc(var(--stat-delay) + .72s) both}
+@keyframes baakStatPuzzleJoin{
+  0%{opacity:0;transform:translate3d(var(--piece-x),var(--piece-y),0) rotate(var(--piece-rotate)) scale(.72);filter:blur(4px)}
+  68%{opacity:1;transform:translate3d(0,0,0) rotate(0) scale(1.1);filter:blur(0)}
+  86%{transform:translate3d(0,0,0) rotate(0) scale(.97)}
+  100%{opacity:1;transform:translate3d(0,0,0) rotate(0) scale(1);filter:blur(0)}
+}
+@keyframes baakStatCaptionReveal{
+  0%{opacity:0;transform:translate3d(0,10px,0);letter-spacing:.23em;filter:blur(2px)}
+  100%{opacity:1;transform:translate3d(0,0,0);letter-spacing:.15em;filter:blur(0)}
+}
+@media(prefers-reduced-motion:reduce){.stats.stats-motion-ready .stat strong,.stats.stats-motion-ready .stat > span{animation:none!important;opacity:1!important;transform:none!important;filter:none!important;clip-path:none!important}}
 
 .section{padding:100px max(8vw,24px);position:relative}
 .section.soft{background:var(--paper)}
@@ -1393,7 +1403,28 @@ function baakInitStatsMotion(root=document) {
   const items=[...stats.querySelectorAll('.stat')];
   if(!items.length) return;
   const reduced=window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  items.forEach((item,index)=>item.style.setProperty('--stat-delay',(index*190)+'ms'));
+  const pieceOffsets=[[-22,-20,-9],[22,-17,9],[-18,20,8],[19,18,-8],[0,-26,0],[-26,0,-10],[26,0,10]];
+  items.forEach((item,index)=>{
+    item.style.setProperty('--stat-delay',(index*190)+'ms');
+    const number=item.querySelector('strong');
+    if(!number||number.dataset.puzzleSplit==='1')return;
+    const original=number.textContent||'';
+    number.setAttribute('aria-label',original);
+    number.replaceChildren();
+    [...original].forEach((character,charIndex)=>{
+      const piece=document.createElement('span');
+      piece.className='stat-piece';
+      piece.setAttribute('aria-hidden','true');
+      piece.textContent=character===' '?'\u00a0':character;
+      const offset=pieceOffsets[(charIndex+index)%pieceOffsets.length];
+      piece.style.setProperty('--piece-x',offset[0]+'px');
+      piece.style.setProperty('--piece-y',offset[1]+'px');
+      piece.style.setProperty('--piece-rotate',offset[2]+'deg');
+      piece.style.setProperty('--piece-delay',(charIndex*62)+'ms');
+      number.appendChild(piece);
+    });
+    number.dataset.puzzleSplit='1';
+  });
   if(reduced){stats.classList.add('stats-motion-ready');return;}
   const reveal=()=>stats.classList.add('stats-motion-ready');
   if(!('IntersectionObserver' in window)){reveal();return;}
